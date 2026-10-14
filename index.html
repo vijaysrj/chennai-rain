@@ -39,9 +39,9 @@ body{margin:0;background:var(--sky);color:var(--ink);
 main{max-width:640px;margin:0 auto;padding:0 0 48px;min-width:0}
 .pad{padding:0 18px}
 .layout{max-width:1200px;margin:0 auto;
-  padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+  padding-top:var(--top-inset, env(safe-area-inset-top));padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
 /* solid strip behind the iPhone status bar / notch so nothing scrolls under it */
-body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--sky);z-index:20}
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--top-inset, env(safe-area-inset-top));background:var(--sky);z-index:20}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
 
 /* ---- the monsoon window ---- */
@@ -171,7 +171,7 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
 
 /* ---- view switch + weatherman feed ---- */
 .switch{display:flex;gap:4px;margin:12px 18px 0;padding:4px;background:var(--paper);border-radius:999px;
-  position:sticky;top:calc(env(safe-area-inset-top) + 8px);z-index:15;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+  position:sticky;top:calc(var(--top-inset, env(safe-area-inset-top)) + 8px);z-index:15;box-shadow:0 4px 14px rgba(0,0,0,.12)}
 .switch button{flex:1;font:inherit;font-size:.9rem;padding:8px;border:0;border-radius:999px;background:none;color:var(--muted);cursor:pointer}
 .switch button[aria-pressed="true"]{background:var(--hero-b);color:var(--h-ink);font-weight:600}
 .feed{padding:20px 18px 48px}
@@ -238,6 +238,7 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
 </section>
 <div id="out" class="later"><p class="status">Loading forecast…</p></div>
 <footer>
+  <p style="margin:0 0 8px">Chennai Mazhai v6 · 14 Oct 2026</p>
   <span id="credit">Rain data from LibreWXR or RainViewer, map © CARTO © OpenStreetMap contributors.</span> The 2-hour outlook projects recent rain movement forward.
   Model forecast from Open-Meteo, blending five global weather models (ECMWF, GFS, ICON, GEM, JMA).
   This is not an official forecast. For cyclone and flood warnings, follow IMD Chennai and the Greater Chennai Corporation.
@@ -889,7 +890,26 @@ async function load(a){
 }
 
 /* ---------- add to home screen ---------- */
-if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker" in navigator && location.protocol==="https:"){
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(r=>{
+    r.update();
+    document.addEventListener("visibilitychange",()=>{ if(!document.hidden) r.update(); });
+  }).catch(()=>{});
+  let reloaded=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{ if(hadController && !reloaded){ reloaded=true; location.reload(); } });
+}
+/* Backup for iPhone Home Screen apps: if the phone doesn't report the notch height, reserve it ourselves */
+(()=>{
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone===true;
+  if(!standalone || !/iphone/i.test(navigator.userAgent)) return;
+  const probe=document.createElement("div"); probe.style.cssText="position:fixed;top:0;height:env(safe-area-inset-top);visibility:hidden";
+  document.body.appendChild(probe); const inset=probe.getBoundingClientRect().height; probe.remove();
+  if(inset>0) return;
+  const h=Math.max(screen.height,screen.width);
+  const top = h>=852 ? 59 : h>=812 ? 47 : 20; // Dynamic Island / notch / older iPhones
+  document.documentElement.style.setProperty("--top-inset", top+"px");
+})();
 (()=>{
   const btn=$("#installBtn"), dlg=$("#installHelp");
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone===true;

@@ -153,7 +153,7 @@ footer{margin-top:36px;font-size:.78rem;color:var(--muted)}
   <div class="links">
     <a id="lnk-fb" target="_blank" rel="noopener">Open on Facebook</a>
     <a id="lnk-x" target="_blank" rel="noopener">Open on X</a>
-    <a id="lnk-web" target="_blank" rel="noopener">His website</a>
+    <a id="lnk-imd" target="_blank" rel="noopener">IMD Chennai warnings</a>
   </div>
   <p class="rnote">Shown as he posts it; this app doesn't edit or summarise his updates. If the feed stays blank, your browser or this preview is blocking Facebook embeds, so use the links.</p>
 </aside>
@@ -594,9 +594,9 @@ $("#rctl").addEventListener("click",e=>{ const b=e.target.closest("button"); if(
 const TNW = {
   facebook: "https://www.facebook.com/tamilnaduweatherman",
   x: "https://x.com/praddy06",
-  web: "https://www.tamilnaduweatherman.in/"
+  imd: "https://mausam.imd.gov.in/chennai/"
 };
-$("#lnk-fb").href = TNW.facebook; $("#lnk-x").href = TNW.x; $("#lnk-web").href = TNW.web;
+$("#lnk-fb").href = TNW.facebook; $("#lnk-x").href = TNW.x; $("#lnk-imd").href = TNW.imd;
 let feedLoaded = false;
 function loadFeed(){
   if(feedLoaded) return; feedLoaded = true;

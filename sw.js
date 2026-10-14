@@ -1,6 +1,6 @@
 // Chennai Mazhai service worker: keeps the app itself available offline.
 // Weather data (radar, models, Facebook) always comes live from the network.
-const CACHE = "mazhai-v4";
+const CACHE = "mazhai-v5";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon.svg"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", e => {
@@ -11,7 +11,7 @@ self.addEventListener("fetch", e => {
   const u = new URL(e.request.url);
   if (e.request.method !== "GET" || u.origin !== location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, {cache: "no-cache"}) // always check GitHub for a newer version first
       .then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
       .catch(() => caches.match(e.request).then(r => r || caches.match("./index.html")))
   );

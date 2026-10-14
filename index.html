@@ -954,7 +954,7 @@ function locate(manual){
     if(!inChennai(lat,lon)){ say("You seem to be outside Chennai, so pick an area instead."); return; }
     const near = nearestArea(lat,lon);
     say("");
-    load({n:`Near ${near.n}`, lat, lon, coast:near.coast, zone:near.zone, me:true});
+    load({n:near.n, lat, lon, coast:near.coast, zone:near.zone, me:true});
     if(manual) closePicker();
   }, err=>{
     say(err.code===1 ? "Location permission is off. Allow it in your browser settings, or pick an area." : "Couldn't get your location right now. Pick an area instead.");

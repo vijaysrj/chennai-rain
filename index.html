@@ -59,6 +59,30 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var
 .rtl div{background:var(--d0);border-radius:0 0 999px 999px;min-height:5px;transition:height .5s ease}
 .rtl-axis{display:flex;justify-content:space-between;font-size:.72rem;color:var(--h-muted);margin-top:4px}
 
+.placebar{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-top:18px}
+.place{display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:1.05rem;font-weight:600;color:var(--h-ink);
+  background:var(--h-glass);border:1px solid var(--h-edge);border-radius:999px;padding:9px 16px 9px 12px;cursor:pointer;backdrop-filter:blur(6px)}
+.place .chev{color:var(--h-muted);font-size:.85rem}
+.placenote{font-size:.8rem;color:var(--h-muted)}
+dialog#picker{padding:0;border:0;background:transparent;max-width:none;max-height:none;width:100%;height:100%;margin:0}
+dialog#picker::backdrop{background:rgba(8,14,22,.55)}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:86vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);
+  border-radius:24px 24px 0 0;padding:16px 16px 0;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
+@media (min-width:660px){.sheet{left:50%;top:50%;bottom:auto;width:560px;transform:translate(-50%,-50%);border-radius:24px;max-height:80vh}}
+.sheethead{display:flex;justify-content:space-between;align-items:center}
+.sheethead h2{margin:0;font-size:1.15rem}
+.x{font:inherit;border:0;background:none;color:var(--muted);font-size:1.1rem;padding:6px 8px;cursor:pointer}
+#pickerSearch{font:inherit;font-size:1rem;width:100%;margin-top:12px;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--sky);color:var(--ink)}
+.locate{font:inherit;font-weight:600;margin-top:10px;width:100%;text-align:left;padding:11px 14px;border-radius:12px;border:1px solid var(--sea);background:none;color:var(--sea);cursor:pointer}
+.pickmsg{font-size:.85rem;color:var(--muted);margin:8px 2px 0;min-height:1em}
+.pickmsg:empty{display:none}
+.arealist{overflow-y:auto;margin-top:8px;padding-bottom:20px}
+.arealist h3{font-size:.8rem;color:var(--muted);font-weight:600;margin:14px 2px 6px}
+.arealist .grid{display:flex;flex-wrap:wrap;gap:6px}
+.arealist button{font:inherit;font-size:.9rem;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}
+.arealist button[aria-current="true"]{background:var(--sea);border-color:var(--sea);color:var(--paper);font-weight:600}
+.arealist .none{color:var(--muted);font-size:.9rem;margin:16px 2px}
+
 /* ---- page sections ---- */
 .label{font-size:.92rem;font-weight:600;margin:0 0 6px;color:var(--sea)}
 .card{background:var(--paper);border-radius:20px;padding:16px;margin:16px 10px 0}
@@ -150,7 +174,10 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
   <canvas class="rainfx" id="rainfx" aria-hidden="true"></canvas>
   <h1 class="brand"><span class="city serif">Chennai</span><span class="ta" lang="ta">மழை</span></h1>
   <p class="tag">Hyperlocal rain for your part of Chennai, in plain words</p>
-  <nav class="areas" id="areas" aria-label="Choose your area"></nav>
+  <div class="placebar">
+    <button type="button" class="place" id="place" aria-haspopup="dialog"><span class="pin" aria-hidden="true">📍</span><span id="placeName">Besant Nagar</span><span class="chev" aria-hidden="true">▾</span></button>
+    <span class="placenote" id="placeNote"></span>
+  </div>
   <div class="now">
     <h2 class="label">Next 2 hours, from radar</h2>
     <p class="rhead serif" id="rhead">Loading radar…</p>
@@ -189,29 +216,35 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
   <p class="rnote">Shown as he posts it; this app doesn't edit or summarise his updates. If the feed stays blank, your browser or this preview is blocking Facebook embeds, so use the links.</p>
 </aside>
 </div>
+<dialog id="picker" aria-labelledby="pickerTitle">
+  <div class="sheet">
+    <div class="sheethead">
+      <h2 id="pickerTitle">Choose your area</h2>
+      <button type="button" class="x" id="pickerClose" aria-label="Close">✕</button>
+    </div>
+    <input type="search" id="pickerSearch" placeholder="Search areas, e.g. Velachery" autocomplete="off" aria-label="Search areas">
+    <button type="button" class="locate" id="locateBtn">📍 Use my current location</button>
+    <p class="pickmsg" id="pickMsg" role="status"></p>
+    <div class="arealist" id="areaList"></div>
+  </div>
+</dialog>
 
 <script>
-const AREAS = [
-  {n:"Besant Nagar",lat:13.0003,lon:80.2667,coast:true},
-  {n:"Adyar",lat:13.0067,lon:80.2570,coast:true},
-  {n:"Mylapore",lat:13.0339,lon:80.2619,coast:true},
-  {n:"T. Nagar",lat:13.0418,lon:80.2341},
-  {n:"Nungambakkam",lat:13.0607,lon:80.2427},
-  {n:"Anna Nagar",lat:13.0850,lon:80.2101},
-  {n:"Guindy",lat:13.0067,lon:80.2206},
-  {n:"Velachery",lat:12.9791,lon:80.2209},
-  {n:"Sholinganallur",lat:12.9010,lon:80.2279,coast:true},
-  {n:"Meenambakkam",lat:12.9941,lon:80.1709},
-  {n:"Tambaram",lat:12.9249,lon:80.1000},
-  {n:"Porur",lat:13.0382,lon:80.1564},
-  {n:"Ambattur",lat:13.1143,lon:80.1548},
-  {n:"Ennore",lat:13.2146,lon:80.3203,coast:true}
-];
+const ZONES = {
+  "Central":[["Egmore",13.0732,80.2609],["Chetpet",13.0714,80.2417],["Kilpauk",13.0839,80.2422],["Purasawalkam",13.0880,80.2550],["Ayanavaram",13.0980,80.2330],["Nungambakkam",13.0607,80.2427],["T. Nagar",13.0418,80.2341],["Teynampet",13.0410,80.2500],["Gopalapuram",13.0510,80.2560],["Royapettah",13.0540,80.2640],["Triplicane",13.0580,80.2760,1],["Chepauk",13.0640,80.2810,1],["Mylapore",13.0339,80.2619,1],["Santhome",13.0330,80.2780,1],["Mandaveli",13.0270,80.2620],["Alwarpet",13.0330,80.2540],["R.A. Puram",13.0190,80.2600],["Nandanam",13.0300,80.2400],["Kotturpuram",13.0200,80.2440],["Saidapet",13.0213,80.2231],["Guindy",13.0067,80.2206],["West Mambalam",13.0390,80.2210],["Kodambakkam",13.0521,80.2255],["Vadapalani",13.0500,80.2121],["Ashok Nagar",13.0370,80.2120],["K.K. Nagar",13.0410,80.1990],["Aminjikarai",13.0700,80.2240],["Shenoy Nagar",13.0790,80.2250],["Arumbakkam",13.0720,80.2100],["Anna Nagar",13.0850,80.2101],["Koyambedu",13.0694,80.1948]],
+  "North":[["George Town",13.0950,80.2870,1],["Sowcarpet",13.0930,80.2780],["Royapuram",13.1137,80.2954,1],["Washermanpet",13.1086,80.2826,1],["Tondiarpet",13.1269,80.2880,1],["Tiruvottiyur",13.1643,80.3001,1],["Ennore",13.2146,80.3203,1],["Manali",13.1667,80.2667],["Kodungaiyur",13.1376,80.2478],["Vyasarpadi",13.1170,80.2550],["Perambur",13.1210,80.2329],["Kolathur",13.1240,80.2120],["Villivakkam",13.1080,80.2060],["Madhavaram",13.1488,80.2306],["Puzhal",13.1580,80.2030],["Red Hills",13.1960,80.1840],["Minjur",13.2790,80.2610]],
+  "South & coast":[["Adyar",13.0067,80.2570,1],["Besant Nagar",13.0003,80.2667,1],["Thiruvanmiyur",12.9830,80.2594,1],["Taramani",12.9850,80.2420],["Velachery",12.9791,80.2209],["Kottivakkam",12.9670,80.2590,1],["Palavakkam",12.9590,80.2560,1],["Neelankarai",12.9490,80.2550,1],["Injambakkam",12.9190,80.2500,1],["Akkarai",12.8870,80.2520,1],["Uthandi",12.8680,80.2440,1],["Kovalam",12.7900,80.2520,1],["Adambakkam",12.9890,80.2050],["Alandur",12.9970,80.2000],["Nanganallur",12.9800,80.1890],["Madipakkam",12.9620,80.1990],["Keelkattalai",12.9560,80.1860],["Kovilambakkam",12.9420,80.1860],["Pallikaranai",12.9370,80.2140],["Medavakkam",12.9200,80.1920]],
+  "OMR (IT corridor)":[["Perungudi",12.9650,80.2460],["Thoraipakkam",12.9370,80.2330],["Karapakkam",12.9200,80.2290],["Sholinganallur",12.9010,80.2279],["Semmencheri",12.8670,80.2250],["Navalur",12.8459,80.2265],["Siruseri",12.8250,80.2190],["Kelambakkam",12.7870,80.2200]],
+  "West":[["Saligramam",13.0510,80.2030],["Virugambakkam",13.0530,80.1920],["Valasaravakkam",13.0400,80.1720],["Ramapuram",13.0300,80.1800],["Porur",13.0382,80.1564],["Mugalivakkam",13.0200,80.1600],["Manapakkam",13.0140,80.1700],["Maduravoyal",13.0650,80.1660],["Vanagaram",13.0590,80.1470],["Iyyappanthangal",13.0390,80.1350],["Mangadu",13.0250,80.1120],["Kundrathur",12.9970,80.0970],["Poonamallee",13.0480,80.0960],["Thirumazhisai",13.0510,80.0600],["Mogappair",13.0837,80.1750],["Padi",13.0960,80.1860],["Korattur",13.1080,80.1830],["Ambattur",13.1143,80.1548],["Thirumullaivoyal",13.1310,80.1300],["Avadi",13.1149,80.1010],["Pattabiram",13.1230,80.0590],["Sriperumbudur",12.9670,79.9420]],
+  "South-west suburbs":[["Meenambakkam",12.9941,80.1709],["Pammal",12.9750,80.1330],["Anakaputhur",12.9800,80.1250],["Pallavaram",12.9675,80.1491],["Chromepet",12.9516,80.1462],["Sembakkam",12.9270,80.1600],["Selaiyur",12.9100,80.1430],["Tambaram",12.9249,80.1000],["Mudichur",12.9100,80.0700],["Perungalathur",12.9050,80.0850],["Vandalur",12.8930,80.0810],["Urapakkam",12.8670,80.0690],["Guduvanchery",12.8450,80.0600]]
+};
+const AREAS = Object.entries(ZONES).flatMap(([zone,list])=>list.map(([n,lat,lon,c])=>({n,lat,lon,coast:!!c,zone})));
+const DEFAULT_AREA = "Besant Nagar";
 const MODELS = {ecmwf_ifs025:"ECMWF",gfs_seamless:"GFS",icon_seamless:"ICON",gem_seamless:"GEM",jma_seamless:"JMA"};
 const BLOCKS = ["Late night","Morning","Afternoon","Evening"];
 const BLOCK_HRS = ["12–6 am","6 am–12","12–6 pm","6 pm–12"];
 const cache = {};
-let current = AREAS[0];
+let current = AREAS.find(a=>a.n===DEFAULT_AREA);
 
 const $ = s => document.querySelector(s);
 const median = a => { const s=[...a].sort((x,y)=>x-y); const m=s.length>>1; return s.length? (s.length%2? s[m] : (s[m-1]+s[m])/2) : 0; };
@@ -594,7 +627,7 @@ function drawMap(frameCanvas, shiftMin, tag){
   const P=localPx(current.lat,current.lon), x=(P.x-SX0)*s, y=(P.y-SY0)*s;
   const ink=getComputedStyle(document.documentElement).getPropertyValue("--ink");
   g.strokeStyle=ink; g.lineWidth=3; g.beginPath(); g.arc(x,y,9,0,7); g.stroke();
-  g.fillStyle=ink; g.font="600 22px system-ui"; g.fillText(current.n,x+14,y+7);
+  g.fillStyle=ink; g.font="600 22px system-ui"; g.fillText(current.me?"You":current.n,x+14,y+7);
   if(radar.motionOk && Math.hypot(radar.vx,radar.vy)>0.07){ // direction-of-travel arrow, top right
     const ang=Math.atan2(radar.vy,radar.vx), cx=430, cy=50;
     g.save(); g.translate(cx,cy); g.rotate(ang); g.lineWidth=4;
@@ -700,25 +733,79 @@ async function load(a){
   current = a;
   if(radar.state==="idle" || (radar.state!=="loading" && Date.now()-(radar.loadedAt||0)>10*60*1000)) loadRadar();
   else renderRadar(a);
-  document.querySelectorAll("#areas button").forEach(b=>b.setAttribute("aria-pressed", b.textContent===a.n));
-  if(cache[a.n]){ cache[a.n].kind==="live"? render(a,cache[a.n].F) : renderFallback(a,cache[a.n].R); return; }
+  $("#placeName").textContent = a.n;
+  $(".pin").textContent = a.me ? "📍" : "📌";
+  const key = `${a.n}|${a.lat.toFixed(3)},${a.lon.toFixed(3)}`;
+  if(cache[key]){ cache[key].kind==="live"? render(a,cache[key].F) : renderFallback(a,cache[key].R); return; }
   $("#out").innerHTML = `<p class="status">Checking five weather models for ${esc(a.n)}…</p>`;
   try{
     const F = process(await fetchModels(a));
-    cache[a.n] = {kind:"live",F}; if(current===a) render(a,F);
+    cache[key] = {kind:"live",F}; if(current===a) render(a,F);
   }catch(e){
     $("#out").innerHTML = `<p class="status">Model data unavailable here. Searching the latest forecasts for ${esc(a.n)} instead (takes ~20 seconds)…</p>`;
     try{
       const R = await claudeFallback(a);
-      cache[a.n] = {kind:"web",R}; if(current===a) renderFallback(a,R);
+      cache[key] = {kind:"web",R}; if(current===a) renderFallback(a,R);
     }catch(e2){
       $("#out").innerHTML = `<p class="status">Couldn't reach any forecast source. Check your connection and try again.</p><button class="retry" onclick="load(current)">Try again</button>`;
     }
   }
 }
-$("#areas").innerHTML = AREAS.map((a,i)=>`<button type="button" aria-pressed="false" data-i="${i}">${a.n}</button>`).join("");
-$("#areas").addEventListener("click",e=>{const b=e.target.closest("button"); if(b) load(AREAS[+b.dataset.i]);});
-load(AREAS[0]);
+
+/* ---------- area picker + location ---------- */
+const store = { get(){ try{ return localStorage.getItem("mazhai-area"); }catch(e){ return null; } },
+                set(v){ try{ localStorage.setItem("mazhai-area", v); }catch(e){} } };
+const inChennai = (lat,lon) => lat>12.7 && lat<13.4 && lon>79.85 && lon<80.4;
+function nearestArea(lat,lon){
+  let best=null,bd=1e9;
+  for(const a of AREAS){ const d=Math.hypot(a.lat-lat,(a.lon-lon)*Math.cos(lat*Math.PI/180)); if(d<bd){bd=d;best=a;} }
+  return best;
+}
+function renderList(q=""){
+  const t=q.trim().toLowerCase();
+  const html = Object.keys(ZONES).map(z=>{
+    const items = AREAS.filter(a=>a.zone===z && (!t || a.n.toLowerCase().includes(t)));
+    if(!items.length) return "";
+    return `<h3>${z}</h3><div class="grid">${items.map(a=>`<button type="button" data-n="${esc(a.n)}" aria-current="${!current.me&&current.n===a.n}">${esc(a.n)}</button>`).join("")}</div>`;
+  }).join("");
+  $("#areaList").innerHTML = html || `<p class="none">No area called “${esc(q)}”. Try a nearby locality, or use your current location.</p>`;
+}
+function openPicker(){ $("#pickMsg").textContent=""; $("#pickerSearch").value=""; renderList(); $("#picker").showModal(); }
+function closePicker(){ $("#picker").close(); $("#place").focus(); }
+function choose(a){ store.set(a.n); $("#placeNote").textContent=""; load(a); }
+
+function locate(manual){
+  const say = m => { if(manual) $("#pickMsg").textContent=m; else $("#placeNote").textContent=m; };
+  if(!navigator.geolocation){ say("Location isn't available in this browser. Pick your area instead."); return; }
+  say("Finding your location…");
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const {latitude:lat, longitude:lon} = pos.coords;
+    if(!inChennai(lat,lon)){ say("You seem to be outside Chennai, so pick an area instead."); return; }
+    const near = nearestArea(lat,lon);
+    say("");
+    load({n:`Near ${near.n}`, lat, lon, coast:near.coast, zone:near.zone, me:true});
+    if(manual) closePicker();
+  }, err=>{
+    say(err.code===1 ? "Location permission is off. Allow it in your browser settings, or pick an area." : "Couldn't get your location right now. Pick an area instead.");
+  }, {enableHighAccuracy:false, timeout:12000, maximumAge:10*60*1000});
+}
+
+$("#place").addEventListener("click", openPicker);
+$("#pickerClose").addEventListener("click", closePicker);
+$("#picker").addEventListener("click", e=>{ if(e.target.id==="picker") closePicker(); });
+$("#pickerSearch").addEventListener("input", e=>renderList(e.target.value));
+$("#pickerSearch").addEventListener("keydown", e=>{ if(e.key==="Enter"){ const b=$("#areaList button"); if(b) b.click(); } });
+$("#locateBtn").addEventListener("click", ()=>locate(true));
+$("#areaList").addEventListener("click", e=>{ const b=e.target.closest("button[data-n]"); if(!b) return;
+  choose(AREAS.find(a=>a.n===b.dataset.n)); closePicker(); });
+
+// Start: last picked area (or Besant Nagar) right away, then switch to your location if allowed
+const saved = AREAS.find(a=>a.n===store.get());
+load(saved || current);
+(async ()=>{
+  try{ if(navigator.permissions){ const st = await navigator.permissions.query({name:"geolocation"}); if(st.state==="denied") return; } }catch(e){}
+  locate(false);
+})();
 </script>
 </body>
 </html>

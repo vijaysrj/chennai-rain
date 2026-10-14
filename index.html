@@ -62,10 +62,20 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var
 .now .label{color:var(--h-muted)}
 .rhead{font-size:1.75rem;line-height:1.22;margin:0 0 8px;font-weight:500}
 .rbody{margin:0;color:var(--h-muted);font-size:.95rem;max-width:34em}
-.rtl{display:grid;grid-template-columns:repeat(12,1fr);gap:5px;height:52px;margin-top:18px;align-items:start;
+.rtl{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;height:52px;margin-top:18px;align-items:start;
   border-top:2px solid var(--h-edge);padding-top:0}
 .rtl div{background:var(--d0);border-radius:0 0 999px 999px;min-height:5px;transition:height .5s ease}
 .rtl-axis{display:flex;justify-content:space-between;font-size:.72rem;color:var(--h-muted);margin-top:4px}
+.rtl-axis .nowlbl{color:var(--h-ink);font-weight:600}
+.rtl div.past{opacity:.55}
+.rtl div.nodata{background:none;outline:1px dashed var(--h-edge);outline-offset:-1px}
+.rtl div.nowmark{box-shadow:0 0 0 2px var(--h-ink);min-height:10px}
+.rrows{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0 0}
+.rrows[hidden]{display:none}
+.rrows div{background:var(--h-glass);border:1px solid var(--h-edge);border-radius:14px;padding:8px 10px}
+.rrows .isnow{border-color:var(--h-ink)}
+.rrows dt{font-size:.72rem;color:var(--h-muted)}
+.rrows dd{margin:2px 0 0;font-size:.85rem;font-weight:600;line-height:1.3}
 
 .placebar{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-top:18px}
 .place{display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:1.05rem;font-weight:600;color:var(--h-ink);
@@ -201,11 +211,16 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
     <span class="placenote" id="placeNote"></span>
   </div>
   <div class="now">
-    <h2 class="label">Next 2 hours, from radar</h2>
+    <h2 class="label">Rain around you, from radar</h2>
     <p class="rhead serif" id="rhead">Loading radar…</p>
     <p class="rbody" id="rbody"></p>
+    <dl class="rrows" id="rrows" hidden>
+      <div><dt>Last 2 hrs</dt><dd id="rowPast"></dd></div>
+      <div class="isnow"><dt>Now</dt><dd id="rowNow"></dd></div>
+      <div><dt>Next 2 hrs</dt><dd id="rowNext"></dd></div>
+    </dl>
     <div class="rtl" id="rtl" aria-hidden="true"></div>
-    <div class="rtl-axis"><span>Now</span><span>+1 hr</span><span>+2 hrs</span></div>
+    <div class="rtl-axis"><span>2 hrs ago</span><span>1 hr ago</span><span class="nowlbl">Now</span><span>+1 hr</span><span>+2 hrs</span></div>
   </div>
 </section>
 <section class="card" aria-label="Radar map">
@@ -628,20 +643,58 @@ function nowcast(a){
     }
   return {steps,nearest};
 }
-function nowcastWords(a,nc){
+function pastFor(a){
+  // rain over the area in each 10-minute slot of the last 2 hours, read from past radar frames
+  const P=localPx(a.lat,a.lon), nowS=Date.now()/1000, last=radar.frames.at(-1), out=[];
+  for(let m=-120;m<0;m+=10){
+    const target=nowS+m*60;
+    if(target>last.time){ // newer than the latest radar image: use its projection
+      const t=(target-last.time)/60; out.push({m,v:sampleMax(radar.I,P.x-radar.vx*t,P.y-radar.vy*t,3)}); continue;
+    }
+    let best=null,bd=1e9;
+    for(const f of radar.frames){ const d=Math.abs(f.time-target); if(d<bd){bd=d;best=f;} }
+    if(!best||bd>10*60){ out.push({m,v:null}); continue; }
+    try{ best.I ??= classGrid(best.c); out.push({m,v:sampleMax(best.I,P.x,P.y,3)}); }catch(e){ out.push({m,v:null}); }
+  }
+  return out;
+}
+function storyWords(a,nc,past){
   const speed=Math.round(Math.hypot(radar.vx,radar.vy)*KM_PX*60);
   const from=(bearing(radar.vx,radar.vy)+180)%360;
   const fromTxt = from>=45&&from<=135 ? "in from the sea" : `from the ${compass(from)}`;
   const moving = radar.motionOk&&speed>=5 ? ` The rain is moving ${fromTxt} at about ${speed} km/h.` : "";
-  const peak = Math.max(...nc.steps.map(s=>s.v));
-  if(nc.steps[0].v){
-    const end=nc.steps.find(s=>!s.v);
-    return [`Raining over ${a.n} now (${INT[nc.steps[0].v]}).`, (end?`Should ease in about ${end.m} minutes.`:"Likely to keep going for the next 2 hours.")+moving];
-  }
-  const arr=nc.steps.find(s=>s.v);
-  if(arr) return [`Rain likely to reach ${a.n} in about ${arr.m} minutes.`, `Expect ${INT[peak]} rain.${moving}`];
-  if(nc.nearest) return [`No rain heading for ${a.n} in the next 2 hours.`, `Nearest rain on radar is about ${Math.round(nc.nearest.d*KM_PX/5)*5||5} km to the ${compass(nc.nearest.brg)}.${moving}`];
-  return ["Radar is clear around Chennai.","No rain showing within 150 km."];
+  const nowV=nc.steps[0].v, fut=nc.steps.slice(1), peakNext=Math.max(...nc.steps.map(s=>s.v));
+  const end=fut.find(s=>!s.v), arr=fut.find(s=>s.v);
+  const known=past.filter(p=>p.v!=null), wet=known.filter(p=>p.v>0);
+  const peakPast=Math.max(0,...wet.map(p=>p.v));
+  let run=0; for(let i=past.length-1;i>=0&&past[i].v>0;i--) run++;
+  const ago = wet.length? -wet.at(-1).m : null;
+
+  // three short rows
+  const earlier = !known.length ? "No radar data"
+    : !wet.length ? "Dry"
+    : nowV && run===past.length ? `Raining throughout, ${INT[peakPast]}`
+    : `Rained about ${wet.length*10} min, ${INT[peakPast]}`;
+  const nowTxt = nowV ? `Raining, ${INT[nowV]}` : "Not raining";
+  const next = nowV ? (end?`Easing in about ${end.m} min`:"Likely to continue")
+    : arr ? `Rain in about ${arr.m} min, ${INT[peakNext]}` : "Dry";
+
+  // headline + detail
+  let head, body;
+  if(nowV){
+    head = `Raining in ${a.n} now${run?`, for about ${(run+1)*10} minutes so far`:""}.`;
+    body = (end?`Should ease in about ${end.m} minutes.`:"Likely to keep going for the next 2 hours.")+moving;
+  } else if(wet.length){
+    head = `Rain stopped about ${ago} minutes ago in ${a.n}.` + (arr?` More is likely in about ${arr.m} minutes.`:" No more expected in the next 2 hours.");
+    body = arr ? `Expect ${INT[peakNext]} rain.${moving}` : (moving.trim()||"Roads may still be wet.");
+  } else if(arr){
+    head = `Rain likely to reach ${a.n} in about ${arr.m} minutes.`;
+    body = `It's been dry for the last 2 hours. Expect ${INT[peakNext]} rain.${moving}`;
+  } else if(nc.nearest){
+    head = `Dry in ${a.n}, and no rain heading this way in the next 2 hours.`;
+    body = `Nearest rain on radar is about ${Math.round(nc.nearest.d*KM_PX/5)*5||5} km to the ${compass(nc.nearest.brg)}.${moving}`;
+  } else { head = `Dry in ${a.n}. Radar is clear around Chennai.`; body = "No rain showing within 150 km in the last 2 hours or heading in."; }
+  return {head, body, rows:[earlier, nowTxt, next]};
 }
 const segColor = v => ["var(--dry)","color-mix(in srgb, var(--rain) 45%, var(--dry))","color-mix(in srgb, var(--rain) 75%, var(--dry))","var(--rain)","var(--heavy)"][v];
 const hhmm = unix => new Date(unix*1000).toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"});
@@ -684,17 +737,23 @@ function renderRadar(a){
   if(radar.state==="loading"){ $("#rhead").textContent="Loading radar…"; return; }
   document.querySelector(".card").hidden = radar.state==="error";
   if(radar.state==="error"){
+    $("#rrows").hidden=true;
     $("#rhead").textContent="Radar couldn't load here.";
     $("#rbody").textContent="It loads when the app is opened as a regular web page, for example on GitHub Pages. The model forecast below still works.";
     return;
   }
   if(radar.analysable){
-    const nc=nowcast(a), [h,b]=nowcastWords(a,nc);
-    $("#rhead").textContent=h; $("#rbody").textContent=b;
+    const nc=nowcast(a), past=pastFor(a), st=storyWords(a,nc,past), h=st.head;
+    $("#rhead").textContent=h; $("#rbody").textContent=st.body;
+    $("#rrows").hidden=false;
+    ["#rowPast","#rowNow","#rowNext"].forEach((id,i)=>$(id).textContent=st.rows[i]);
     $("#compare").textContent=`Our radar for ${a.n}: ${h}`;
     rainFX.set(Math.max(...nc.steps.slice(0,7).map(s=>s.v)), radar.vx);
-    $("#rtl").innerHTML=nc.steps.slice(0,12).map(s=>`<div style="height:${[5,30,55,80,100][s.v]}%;background:var(--d${s.v})" title="+${s.m} min: ${s.v?INT[s.v]:"dry"}"></div>`).join("");
+    const drip=(v,cls,label)=>`<div class="${cls}" style="height:${v==null?5:[5,30,55,80,100][v]}%;${v==null?"":`background:var(--d${v})`}" title="${label}: ${v==null?"no radar data":v?INT[v]:"dry"}"></div>`;
+    $("#rtl").innerHTML = past.map(p=>drip(p.v, p.v==null?"past nodata":"past", `${-p.m} min ago`)).join("")
+      + nc.steps.slice(0,12).map((s,i)=>drip(s.v, i===0?"nowmark":"", s.m?`In ${s.m} min`:"Now")).join("");
   } else {
+    $("#rrows").hidden=true;
     $("#rhead").textContent="Radar map loaded, but this browser blocked the rain analysis.";
     $("#rbody").textContent="You can still read the map and replay the last 2 hours.";
   }
@@ -717,7 +776,7 @@ async function loadRadar(){
     Object.assign(radar,{base:base.c,frames,vx:0,vy:0,motionOk:false,analysable:true,
       age:Math.max(0,(Date.now()/1000-frames.at(-1).time)/60), loadedAt:Date.now()});
     try{
-      radar.I=classGrid(frames.at(-1).c);
+      radar.I=classGrid(frames.at(-1).c); frames.at(-1).I=radar.I;
       const old=frames[Math.max(0,frames.length-4)];
       if(old!==frames.at(-1)){
         const mo=estimateMotion(classGrid(old.c),radar.I,(frames.at(-1).time-old.time)/60);

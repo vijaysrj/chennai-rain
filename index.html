@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Chennai Mazhai — hyperlocal rain</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#192A3B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mazhai">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 :root{
   --sky:#E9EFF3; --paper:#F7FAFC; --ink:#15212C; --muted:#56697A;
@@ -64,8 +72,8 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var
   background:var(--h-glass);border:1px solid var(--h-edge);border-radius:999px;padding:9px 16px 9px 12px;cursor:pointer;backdrop-filter:blur(6px)}
 .place .chev{color:var(--h-muted);font-size:.85rem}
 .placenote{font-size:.8rem;color:var(--h-muted)}
-dialog#picker{padding:0;border:0;background:transparent;max-width:none;max-height:none;width:100%;height:100%;margin:0}
-dialog#picker::backdrop{background:rgba(8,14,22,.55)}
+dialog#picker,dialog#installHelp{padding:0;border:0;background:transparent;max-width:none;max-height:none;width:100%;height:100%;margin:0}
+dialog#picker::backdrop,dialog#installHelp::backdrop{background:rgba(8,14,22,.55)}
 .sheet{position:absolute;left:0;right:0;bottom:0;max-height:86vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);
   border-radius:24px 24px 0 0;padding:16px 16px 0;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
 @media (min-width:660px){.sheet{left:50%;top:50%;bottom:auto;width:560px;transform:translate(-50%,-50%);border-radius:24px;max-height:80vh}}
@@ -82,6 +90,17 @@ dialog#picker::backdrop{background:rgba(8,14,22,.55)}
 .arealist button{font:inherit;font-size:.9rem;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}
 .arealist button[aria-current="true"]{background:var(--sea);border-color:var(--sea);color:var(--paper);font-weight:600}
 .arealist .none{color:var(--muted);font-size:.9rem;margin:16px 2px}
+
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.install{font:inherit;font-size:.78rem;font-weight:600;color:var(--h-ink);background:var(--h-glass);border:1px solid var(--h-edge);
+  border-radius:999px;padding:6px 11px;cursor:pointer;backdrop-filter:blur(6px);white-space:nowrap}
+.install[hidden]{display:none}
+.steps{margin:14px 0 18px;padding-left:1.4em;font-size:.95rem;line-height:1.6}
+.steps li{margin-bottom:6px}
+.appicon{width:56px;height:56px;border-radius:14px;display:block}
+.howto{display:flex;gap:14px;align-items:center;margin-top:12px}
+.howto p{margin:0;color:var(--muted);font-size:.9rem}
+@media (display-mode: standalone){ .hero{padding-top:max(26px, env(safe-area-inset-top))} }
 
 /* ---- page sections ---- */
 .label{font-size:.92rem;font-weight:600;margin:0 0 6px;color:var(--sea)}
@@ -172,7 +191,10 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
 <main>
 <section class="hero" aria-label="Rain in the next 2 hours">
   <canvas class="rainfx" id="rainfx" aria-hidden="true"></canvas>
-  <h1 class="brand"><span class="city serif">Chennai</span><span class="ta" lang="ta">மழை</span></h1>
+  <div class="top">
+    <h1 class="brand"><span class="city serif">Chennai</span><span class="ta" lang="ta">மழை</span></h1>
+    <button type="button" class="install" id="installBtn"><span aria-hidden="true">＋</span> Add to Home Screen</button>
+  </div>
   <p class="tag">Hyperlocal rain for your part of Chennai, in plain words</p>
   <div class="placebar">
     <button type="button" class="place" id="place" aria-haspopup="dialog"><span class="pin" aria-hidden="true">📍</span><span id="placeName">Besant Nagar</span><span class="chev" aria-hidden="true">▾</span></button>
@@ -216,6 +238,16 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
   <p class="rnote">Shown as he posts it; this app doesn't edit or summarise his updates. If the feed stays blank, your browser or this preview is blocking Facebook embeds, so use the links.</p>
 </aside>
 </div>
+<dialog id="installHelp" class="sheetdlg" aria-labelledby="installTitle">
+  <div class="sheet">
+    <div class="sheethead">
+      <h2 id="installTitle">Add Mazhai to your Home Screen</h2>
+      <button type="button" class="x" id="installClose" aria-label="Close">✕</button>
+    </div>
+    <div class="howto"><img class="appicon" src="icon-192.png" alt=""><p>Opens full-screen like an app, with its own icon.</p></div>
+    <ol class="steps" id="installSteps"></ol>
+  </div>
+</dialog>
 <dialog id="picker" aria-labelledby="pickerTitle">
   <div class="sheet">
     <div class="sheethead">
@@ -751,6 +783,41 @@ async function load(a){
     }
   }
 }
+
+/* ---------- add to home screen ---------- */
+if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+(()=>{
+  const btn=$("#installBtn"), dlg=$("#installHelp");
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone===true;
+  const ua=navigator.userAgent;
+  const isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+  const isAndroid = /android/i.test(ua);
+  let deferred=null;
+  if(standalone){ btn.hidden=true; return; }
+  addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); deferred=e; });
+  addEventListener("appinstalled", ()=>{ btn.hidden=true; });
+  const steps = isIOS ? [
+      "Open this page in <b>Safari</b> (on iOS 16.4 or later, Chrome works too).",
+      "Tap the <b>Share</b> button (the square with an arrow pointing up).",
+      "Scroll down and tap <b>Add to Home Screen</b>.",
+      "Tap <b>Add</b>. Mazhai will appear on your Home Screen."
+    ] : isAndroid ? [
+      "Tap the <b>⋮</b> menu at the top right of Chrome.",
+      "Tap <b>Add to Home screen</b> or <b>Install app</b>.",
+      "Tap <b>Install</b> (or <b>Add</b>) to confirm."
+    ] : [
+      "In Chrome or Edge, click the <b>install icon</b> at the right end of the address bar.",
+      "Or open the browser menu and choose <b>Install Chennai Mazhai</b>.",
+      "On a phone, open this page there and tap <b>Add to Home Screen</b>."
+    ];
+  btn.addEventListener("click", async ()=>{
+    if(deferred){ deferred.prompt(); const r=await deferred.userChoice; deferred=null; if(r.outcome==="accepted") btn.hidden=true; return; }
+    $("#installSteps").innerHTML = steps.map(s=>`<li>${s}</li>`).join("");
+    dlg.showModal();
+  });
+  $("#installClose").addEventListener("click", ()=>dlg.close());
+  dlg.addEventListener("click", e=>{ if(e.target===dlg) dlg.close(); });
+})();
 
 /* ---------- area picker + location ---------- */
 const store = { get(){ try{ return localStorage.getItem("mazhai-area"); }catch(e){ return null; } },

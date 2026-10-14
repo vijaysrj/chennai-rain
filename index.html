@@ -235,7 +235,7 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
 </section>
 <div id="out" class="later"><p class="status">Loading forecast…</p></div>
 <footer>
-  Radar from RainViewer, map © CARTO © OpenStreetMap. The 2-hour outlook projects the radar's recent rain movement forward.
+  <span id="credit">Rain data from LibreWXR or RainViewer, map © CARTO © OpenStreetMap contributors.</span> The 2-hour outlook projects recent rain movement forward.
   Model forecast from Open-Meteo, blending five global weather models (ECMWF, GFS, ICON, GEM, JMA).
   This is not an official forecast. For cyclone and flood warnings, follow IMD Chennai and the Greater Chennai Corporation.
 </footer>
@@ -757,23 +757,64 @@ function renderRadar(a){
     $("#rhead").textContent="Radar map loaded, but this browser blocked the rain analysis.";
     $("#rbody").textContent="You can still read the map and replay the last 2 hours.";
   }
-  $("#rnote").textContent=`Latest radar image ${hhmm(radar.frames.at(-1).time)} (radar runs about ${Math.round(radar.age)} min behind). Projections assume rain keeps its current track and strength, so trust the first hour most. If it's raining where you are but the map is empty, the radar feed may be down.`;
+  $("#rnote").textContent=`Latest rain image ${hhmm(radar.frames.at(-1).time)}, from ${radar.source} (it runs about ${Math.round(radar.age)} min behind). Projections assume rain keeps its current track and strength, so trust the first hour most. If it's raining where you are but the map is empty, the radar feed may be down.`;
   showView(view==="replay"?0:view);
+}
+// Radar providers, tried in order. LibreWXR needs no key and covers India with NOAA's
+// satellite-observed rain (RRQPE); RainViewer is the fallback.
+const RADAR_SOURCES = [
+  {name:"LibreWXR", meta:"https://api.librewxr.net/public/weather-maps.json"},
+  {name:"RainViewer", meta:"https://api.rainviewer.com/public/weather-maps.json"}
+];
+// Base maps, tried in order (dark mode for OSM is made by inverting it)
+const BASEMAPS = [
+  {name:"CARTO", url:(x,y,dark)=>`https://a.basemaps.cartocdn.com/${dark?"dark_all":"light_all"}/${RZ}/${x}/${y}.png`},
+  {name:"OpenStreetMap", url:(x,y)=>`https://tile.openstreetmap.org/${RZ}/${x}/${y}.png`, invertDark:true}
+];
+// A provider that wants a key (or is erroring) serves the same "message" image for every tile.
+function looksLikeErrorImage(c){
+  try{
+    const g=c.getContext("2d"), a=g.getImageData(0,0,TILE,TILE).data, b=g.getImageData(TILE,TILE,TILE,TILE).data, d=g.getImageData(2*TILE,2*TILE,TILE,TILE).data;
+    let opaque=0, same=true;
+    for(let i=3;i<a.length;i+=4){ if(a[i]>0) opaque++; }
+    if(!opaque) return false;
+    for(let i=0;i<a.length;i+=16){ if(a[i]!==b[i]||a[i]!==d[i]){ same=false; break; } }
+    return same;
+  }catch(e){ return false; }
+}
+async function loadBase(dark){
+  for(const bm of BASEMAPS){
+    const r=await composite((x,y)=>bm.url(x,y,dark));
+    if(r.ok && !looksLikeErrorImage(r.c)){
+      if(dark && bm.invertDark){ const c=document.createElement("canvas"); c.width=c.height=W; const g=c.getContext("2d");
+        g.filter="invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)"; g.drawImage(r.c,0,0); return {c, name:bm.name}; }
+      return {c:r.c, name:bm.name};
+    }
+  }
+  const c=document.createElement("canvas"); c.width=c.height=W; return {c, name:null};
+}
+async function loadFrames(src){
+  const meta=await (await fetch(src.meta,{cache:"no-store"})).json();
+  const past=(meta.radar?.past||[]).slice(-13);
+  if(!past.length) throw new Error("no frames");
+  const fr=await Promise.all(past.map(f=>composite((x,y)=>`${meta.host}${f.path}/256/${RZ}/${x}/${y}/2/1_0.png`)));
+  const frames=fr.map((f,i)=>({c:f.c,ok:f.ok,time:past[i].time})).filter(f=>f.ok);
+  if(!frames.length) throw new Error("no tiles");
+  if(looksLikeErrorImage(frames.at(-1).c)) throw new Error("provider returned a message image");
+  return frames;
 }
 async function loadRadar(){
   radar.state="loading"; renderRadar(current);
   try{
-    const meta=await (await fetch("https://api.rainviewer.com/public/weather-maps.json")).json();
-    const past=(meta.radar?.past||[]).slice(-13);
-    if(!past.length) throw new Error("no frames");
-    const style=matchMedia("(prefers-color-scheme: dark)").matches?"dark_all":"light_all";
-    const [base,...fr]=await Promise.all([
-      composite((x,y)=>`https://a.basemaps.cartocdn.com/${style}/${RZ}/${x}/${y}.png`),
-      ...past.map(f=>composite((x,y)=>`${meta.host}${f.path}/256/${RZ}/${x}/${y}/2/1_0.png`))
-    ]);
-    const frames=fr.map((f,i)=>({c:f.c,ok:f.ok,time:past[i].time})).filter(f=>f.ok);
-    if(!frames.length) throw new Error("no tiles");
-    Object.assign(radar,{base:base.c,frames,vx:0,vy:0,motionOk:false,analysable:true,
+    const dark=matchMedia("(prefers-color-scheme: dark)").matches;
+    const basePromise=loadBase(dark);
+    let frames=null, source=null;
+    for(const src of RADAR_SOURCES){
+      try{ frames=await loadFrames(src); source=src.name; break; }catch(e){ console.warn(src.name, e.message); }
+    }
+    if(!frames) throw new Error("all radar providers failed");
+    const base=await basePromise;
+    Object.assign(radar,{base:base.c,baseName:base.name,source,frames,vx:0,vy:0,motionOk:false,analysable:true,
       age:Math.max(0,(Date.now()/1000-frames.at(-1).time)/60), loadedAt:Date.now()});
     try{
       radar.I=classGrid(frames.at(-1).c); frames.at(-1).I=radar.I;
@@ -784,6 +825,7 @@ async function loadRadar(){
       }
     }catch(e){ radar.analysable=false; }
     radar.state="ready";
+    $("#credit").textContent = `Rain data from ${source==="LibreWXR"?"LibreWXR (NOAA satellite-observed rain over India)":"RainViewer"}${radar.baseName?`, map © ${radar.baseName==="CARTO"?"CARTO ":""}© OpenStreetMap contributors`:""}.`;
   }catch(e){ radar.state="error"; }
   renderRadar(current);
 }

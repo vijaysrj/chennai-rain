@@ -38,7 +38,10 @@ body{margin:0;background:var(--sky);color:var(--ink);
 .ta{font-family:"Tamil Sangam MN","Noto Serif Tamil","Noto Sans Tamil","Latha","Nirmala UI",serif}
 main{max-width:640px;margin:0 auto;padding:0 0 48px;min-width:0}
 .pad{padding:0 18px}
-.layout{max-width:1200px;margin:0 auto}
+.layout{max-width:1200px;margin:0 auto;
+  padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+/* solid strip behind the iPhone status bar / notch so nothing scrolls under it */
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--sky);z-index:20}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
 
 /* ---- the monsoon window ---- */
@@ -84,7 +87,7 @@ button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var
 .placenote{font-size:.8rem;color:var(--h-muted)}
 dialog#picker,dialog#installHelp{padding:0;border:0;background:transparent;max-width:none;max-height:none;width:100%;height:100%;margin:0}
 dialog#picker::backdrop,dialog#installHelp::backdrop{background:rgba(8,14,22,.55)}
-.sheet{position:absolute;left:0;right:0;bottom:0;max-height:86vh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:calc(86vh - env(safe-area-inset-top));padding-bottom:env(safe-area-inset-bottom);display:flex;flex-direction:column;background:var(--paper);color:var(--ink);
   border-radius:24px 24px 0 0;padding:16px 16px 0;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
 @media (min-width:660px){.sheet{left:50%;top:50%;bottom:auto;width:560px;transform:translate(-50%,-50%);border-radius:24px;max-height:80vh}}
 .sheethead{display:flex;justify-content:space-between;align-items:center}
@@ -110,7 +113,6 @@ dialog#picker::backdrop,dialog#installHelp::backdrop{background:rgba(8,14,22,.55
 .appicon{width:56px;height:56px;border-radius:14px;display:block}
 .howto{display:flex;gap:14px;align-items:center;margin-top:12px}
 .howto p{margin:0;color:var(--muted);font-size:.9rem}
-@media (display-mode: standalone){ .hero{padding-top:max(26px, env(safe-area-inset-top))} }
 
 /* ---- page sections ---- */
 .label{font-size:.92rem;font-weight:600;margin:0 0 6px;color:var(--sea)}
@@ -168,7 +170,8 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
 .retry{margin-top:10px;font:inherit;padding:7px 14px;border-radius:999px;border:1px solid var(--sea);background:none;color:var(--sea);cursor:pointer}
 
 /* ---- view switch + weatherman feed ---- */
-.switch{display:flex;gap:4px;margin:12px 18px 0;padding:4px;background:var(--paper);border-radius:999px}
+.switch{display:flex;gap:4px;margin:12px 18px 0;padding:4px;background:var(--paper);border-radius:999px;
+  position:sticky;top:calc(env(safe-area-inset-top) + 8px);z-index:15;box-shadow:0 4px 14px rgba(0,0,0,.12)}
 .switch button{flex:1;font:inherit;font-size:.9rem;padding:8px;border:0;border-radius:999px;background:none;color:var(--muted);cursor:pointer}
 .switch button[aria-pressed="true"]{background:var(--hero-b);color:var(--h-ink);font-weight:600}
 .feed{padding:20px 18px 48px}

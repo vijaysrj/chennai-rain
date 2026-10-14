@@ -6,81 +6,101 @@
 <title>Chennai Mazhai — hyperlocal rain</title>
 <style>
 :root{
-  --sky:#E6EDF1; --paper:#F5F8FA; --ink:#1C2A35; --muted:#5B7083;
-  --sea:#13707F; --rain:#2F5DA8; --heavy:#7A2E8C; --dry:#C9D5DC; --line:#C7D3DA;
-  --warn-bg:#FFF3D6; --warn-ink:#6B4A00;
+  --sky:#E9EFF3; --paper:#F7FAFC; --ink:#15212C; --muted:#56697A;
+  --sea:#0F6E78; --rain:#2E63B8; --heavy:#7B2F91; --dry:#D3DEE5; --line:#CAD6DE;
+  --marigold:#E39B2D; --warn-bg:#FCEFD6; --warn-ink:#6A4300;
+  --hero-a:#29405A; --hero-b:#192A3B; --hero-c:#101C29;
+  --h-ink:#EEF4F8; --h-muted:#A8BDCD; --h-glass:rgba(255,255,255,.08); --h-edge:rgba(255,255,255,.2);
+  --d0:rgba(255,255,255,.2); --d1:#A9D2F3; --d2:#6FAEEB; --d3:#3F8BE3; --d4:#D19BEF;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --sky:#121C24; --paper:#1A2731; --ink:#E3EAEE; --muted:#93A6B4;
-    --sea:#4FB3C2; --rain:#6E9BE6; --heavy:#C38AD4; --dry:#2C3B46; --line:#2E3F4B;
-    --warn-bg:#3A2E10; --warn-ink:#F2D58A;
+    --sky:#0D1620; --paper:#15212C; --ink:#E2EBF1; --muted:#93A7B6;
+    --sea:#55B9C4; --rain:#79A6EC; --heavy:#C58FDA; --dry:#283845; --line:#2A3B48;
+    --marigold:#F0B04E; --warn-bg:#3A2C0F; --warn-ink:#F4D58F;
+    --hero-a:#1F3348; --hero-b:#142333; --hero-c:#0A131C;
     color-scheme: dark;
   }
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--sky);color:var(--ink);
   font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
-main{max-width:640px;margin:0 auto;padding:20px 18px 48px;min-width:0}
-.layout{max-width:1200px;margin:0 auto}
-.switch{display:flex;gap:4px;margin:14px 18px 0;padding:4px;background:var(--paper);border-radius:12px}
-.switch button{flex:1;font:inherit;font-size:.9rem;padding:8px;border:0;border-radius:9px;background:none;color:var(--muted);cursor:pointer}
-.switch button[aria-pressed="true"]{background:var(--sea);color:var(--paper);font-weight:600}
-.feed{padding:20px 18px 48px}
-.feed h2{font-size:1.05rem;font-weight:600;margin:0;color:var(--sea)}
-.feed .sub{margin:2px 0 12px;color:var(--muted);font-size:.85rem}
-.feedframe{background:#fff;border-radius:12px;overflow:hidden;height:calc(100vh - 210px);min-height:520px}
-.feedframe iframe{border:0;width:100%;height:100%;display:block}
-.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-.links a{font-size:.85rem;padding:6px 11px;border-radius:8px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
-.links a:focus-visible{outline:2px solid var(--rain);outline-offset:2px}
-.compare{font-size:.85rem;background:var(--paper);border-left:3px solid var(--rain);padding:10px 12px;border-radius:0 8px 8px 0;margin-bottom:12px}
-@media (max-width:979px){
-  .layout[data-tab="ours"] .feed{display:none}
-  .layout[data-tab="his"] main{display:none}
-}
-@media (min-width:980px){
-  .switch{display:none}
-  .layout{display:grid;grid-template-columns:minmax(0,640px) minmax(340px,500px);gap:24px;justify-content:center}
-  .feed{position:sticky;top:0;align-self:start;height:100vh;overflow:auto}
-}
 .serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
-header h1{font-size:1.05rem;font-weight:600;margin:0;color:var(--sea)}
-header p{margin:2px 0 0;color:var(--muted);font-size:.85rem}
-.areas{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;scrollbar-width:none}
+.ta{font-family:"Tamil Sangam MN","Noto Serif Tamil","Noto Sans Tamil","Latha","Nirmala UI",serif}
+main{max-width:640px;margin:0 auto;padding:0 0 48px;min-width:0}
+.pad{padding:0 18px}
+.layout{max-width:1200px;margin:0 auto}
+button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
+
+/* ---- the monsoon window ---- */
+.hero{position:relative;overflow:hidden;color:var(--h-ink);
+  background:linear-gradient(172deg,var(--hero-a) 0%,var(--hero-b) 55%,var(--hero-c) 100%);
+  padding:26px 18px 22px;border-radius:26px;margin:12px 10px 0}
+@media (min-width:660px){.hero{border-radius:28px;margin:16px 0 0}}
+.hero canvas.rainfx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.hero > *:not(canvas){position:relative}
+.brand{display:flex;align-items:flex-end;gap:12px;margin:0}
+.brand .ta{font-size:3.4rem;line-height:1;font-weight:600;letter-spacing:.01em;
+  background:linear-gradient(180deg,#FFFFFF 0%,#BFD9EC 70%,#8DB8DA 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand .city{font-size:1.05rem;color:var(--h-muted);padding-bottom:.45rem}
+.tag{margin:6px 0 0;color:var(--h-muted);font-size:.9rem}
+.areas{display:flex;gap:8px;overflow-x:auto;padding:18px 0 4px;scrollbar-width:none;margin:0 -18px;padding-left:18px;padding-right:18px}
 .areas::-webkit-scrollbar{display:none}
-.areas button{flex:none;border:1px solid var(--line);background:var(--paper);color:var(--ink);
-  padding:7px 13px;border-radius:999px;font:inherit;font-size:.9rem;cursor:pointer}
-.areas button[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:var(--paper)}
-button:focus-visible,summary:focus-visible{outline:2px solid var(--rain);outline-offset:2px}
-.headline{font-size:1.9rem;line-height:1.2;margin:22px 0 10px;font-weight:500}
-.verdict{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;color:var(--muted);font-size:.95rem}
-.verdict strong{color:var(--ink)}
-.conf{padding:2px 9px;border-radius:6px;border:1px solid var(--line);font-size:.82rem}
-.ribbon{margin:26px 0 8px}
+.areas button{flex:none;border:1px solid var(--h-edge);background:var(--h-glass);color:var(--h-ink);
+  padding:7px 14px;border-radius:999px;font:inherit;font-size:.9rem;cursor:pointer;backdrop-filter:blur(6px)}
+.areas button[aria-pressed="true"]{background:var(--h-ink);border-color:var(--h-ink);color:#15212C;font-weight:600}
+.now{margin-top:22px}
+.now .label{color:var(--h-muted)}
+.rhead{font-size:1.75rem;line-height:1.22;margin:0 0 8px;font-weight:500}
+.rbody{margin:0;color:var(--h-muted);font-size:.95rem;max-width:34em}
+.rtl{display:grid;grid-template-columns:repeat(12,1fr);gap:5px;height:52px;margin-top:18px;align-items:start;
+  border-top:2px solid var(--h-edge);padding-top:0}
+.rtl div{background:var(--d0);border-radius:0 0 999px 999px;min-height:5px;transition:height .5s ease}
+.rtl-axis{display:flex;justify-content:space-between;font-size:.72rem;color:var(--h-muted);margin-top:4px}
+
+/* ---- page sections ---- */
+.label{font-size:.92rem;font-weight:600;margin:0 0 6px;color:var(--sea)}
+.card{background:var(--paper);border-radius:20px;padding:16px;margin:16px 10px 0}
+.card[hidden]{display:none}
+.map{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:1;background:var(--dry)}
+.map canvas{width:100%;height:100%;display:block}
+.maptag{position:absolute;left:10px;bottom:10px;background:var(--paper);color:var(--ink);font-size:.75rem;padding:3px 9px;border-radius:999px;opacity:.92}
+.rctl{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.rctl button{font:inherit;font-size:.85rem;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}
+.rctl button[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:var(--paper);font-weight:600}
+.rnote{font-size:.78rem;color:var(--muted);margin:12px 0 0}
+.later{margin-top:34px;padding:0 18px}
+.headline{font-size:1.95rem;line-height:1.2;margin:4px 0 12px;font-weight:500}
+.verdict{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center;color:var(--muted);font-size:.92rem}
+.verdict strong{background:color-mix(in srgb,var(--marigold) 22%,var(--paper));color:var(--ink);padding:5px 12px;border-radius:999px;font-weight:600}
+.conf{padding:4px 10px;border-radius:999px;border:1px solid var(--line);font-size:.8rem}
+.ribbon{margin:28px 0 8px}
 .ribbon h2,.section h2{font-size:.95rem;font-weight:600;margin:0 0 10px}
-.strip{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;height:54px}
-.strip div{border-radius:4px;background:var(--dry);position:relative}
-.strip div.past{opacity:.35}
+.strip{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;height:64px;align-items:start;border-top:2px solid var(--line)}
+.strip div{border-radius:0 0 999px 999px;background:var(--dry);min-height:6px}
+.strip div.past{opacity:.3}
 .strip-labels{display:grid;grid-template-columns:repeat(8,1fr);font-size:.7rem;color:var(--muted);margin-top:4px}
 .strip-labels span{text-align:center}
 .daysplit{display:grid;grid-template-columns:1fr 1fr;font-size:.75rem;color:var(--muted);margin-top:2px}
 .daysplit span:last-child{border-left:1px solid var(--line);padding-left:6px}
 .blocks{list-style:none;padding:0;margin:18px 0 0}
-.blocks li{display:grid;grid-template-columns:7.5rem 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.blocks li{display:grid;grid-template-columns:7.5rem 1fr;gap:10px;padding:11px 0;border-top:1px solid var(--line)}
 .blocks .when{color:var(--muted);font-size:.9rem}
 .blocks .agree{display:block;color:var(--muted);font-size:.8rem}
-.section{margin-top:32px}
-.week{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.section{margin-top:34px}
+.week{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
 .week::-webkit-scrollbar{display:none}
-.day{flex:1 0 76px;background:var(--paper);border-radius:10px;padding:10px 8px;text-align:center;font-size:.8rem}
-.day b{display:block;font-size:.85rem}
-.day .em{font-size:1.4rem;display:block;margin:4px 0}
-.day .cat{color:var(--muted);display:block;min-height:2.4em}
-.season{background:var(--paper);border-left:3px solid var(--sea);padding:12px 14px;border-radius:0 8px 8px 0;font-size:.92rem}
-.warn{background:var(--warn-bg);color:var(--warn-ink);padding:10px 12px;border-radius:8px;font-size:.88rem;margin-top:14px}
-details{margin-top:32px;border-top:2px solid var(--ink);padding-top:12px}
+.day{flex:1 0 74px;background:var(--paper);border-radius:16px;padding:12px 6px 10px;text-align:center;font-size:.78rem;display:flex;flex-direction:column;align-items:center;gap:6px}
+.day b{font-size:.85rem}
+.gauge{width:18px;height:64px;border:2px solid var(--line);border-top:0;border-radius:0 0 10px 10px;position:relative;overflow:hidden;
+  background:repeating-linear-gradient(to top,transparent 0 15px,var(--line) 15px 16px)}
+.gauge i{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,color-mix(in srgb,var(--rain) 70%,white),var(--rain))}
+.gauge i.hv{background:linear-gradient(180deg,color-mix(in srgb,var(--heavy) 70%,white),var(--heavy))}
+.day .cat{color:var(--muted);min-height:2.4em;line-height:1.2}
+.season{background:var(--paper);border-left:3px solid var(--sea);padding:12px 14px;border-radius:0 14px 14px 0;font-size:.92rem}
+.warn{background:var(--warn-bg);color:var(--warn-ink);padding:10px 12px;border-radius:12px;font-size:.88rem;margin-top:14px}
+details{margin-top:34px;border-top:2px solid var(--ink);padding-top:12px}
 summary{cursor:pointer;font-weight:600}
 details p,details li{font-size:.9rem}
 .tablewrap{overflow-x:auto}
@@ -90,25 +110,33 @@ th:first-child,td:first-child{text-align:left}
 .bars{display:flex;align-items:flex-end;gap:1px;height:90px;border-bottom:1px solid var(--line);margin-top:8px}
 .bars div{flex:1;background:var(--rain);min-height:1px;border-radius:1px 1px 0 0}
 .bars-axis{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted)}
-.status{color:var(--muted);margin-top:30px}
-.radar{margin-top:18px;background:var(--paper);border-radius:14px;padding:16px 16px 14px}
-.label{font-size:.95rem;font-weight:600;margin:0 0 6px;color:var(--sea)}
-.rhead{font-size:1.45rem;line-height:1.25;margin:0 0 6px;font-weight:500}
-.rbody{margin:0;color:var(--muted);font-size:.95rem}
-.rtl{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;height:22px;margin-top:14px}
-.rtl div{background:var(--dry);border-radius:3px}
-.rtl-axis{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-top:3px}
-.map{position:relative;margin-top:14px;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--dry)}
-.map canvas{width:100%;height:100%;display:block}
-.maptag{position:absolute;left:8px;bottom:8px;background:var(--paper);color:var(--ink);font-size:.75rem;padding:2px 8px;border-radius:6px;opacity:.9}
-.rctl{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.rctl button{font:inherit;font-size:.85rem;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}
-.rctl button[aria-pressed="true"]{border-color:var(--sea);color:var(--sea);font-weight:600}
-.rnote{font-size:.78rem;color:var(--muted);margin:10px 0 0}
-.later{margin-top:34px}
-.later .headline{margin-top:4px}
-footer{margin-top:36px;font-size:.78rem;color:var(--muted)}
-.retry{margin-top:10px;font:inherit;padding:7px 14px;border-radius:8px;border:1px solid var(--sea);background:none;color:var(--sea);cursor:pointer}
+.status{color:var(--muted);margin-top:10px}
+footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
+.retry{margin-top:10px;font:inherit;padding:7px 14px;border-radius:999px;border:1px solid var(--sea);background:none;color:var(--sea);cursor:pointer}
+
+/* ---- view switch + weatherman feed ---- */
+.switch{display:flex;gap:4px;margin:12px 18px 0;padding:4px;background:var(--paper);border-radius:999px}
+.switch button{flex:1;font:inherit;font-size:.9rem;padding:8px;border:0;border-radius:999px;background:none;color:var(--muted);cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--hero-b);color:var(--h-ink);font-weight:600}
+.feed{padding:20px 18px 48px}
+.feed h2{font-size:1.05rem;font-weight:600;margin:0;color:var(--sea)}
+.feed .sub{margin:2px 0 12px;color:var(--muted);font-size:.85rem}
+.feedframe{background:#fff;border-radius:18px;overflow:hidden;height:calc(100vh - 210px);min-height:520px}
+.feedframe iframe{border:0;width:100%;height:100%;display:block}
+.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.links a{font-size:.85rem;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.compare{font-size:.85rem;background:var(--paper);border-left:3px solid var(--rain);padding:10px 12px;border-radius:0 12px 12px 0;margin-bottom:12px}
+@media (max-width:979px){
+  .layout[data-tab="ours"] .feed{display:none}
+  .layout[data-tab="his"] main{display:none}
+  .switch{margin-top:12px}
+}
+@media (min-width:980px){
+  .switch{display:none}
+  .layout{display:grid;grid-template-columns:minmax(0,640px) minmax(340px,480px);gap:28px;justify-content:center}
+  .feed{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding-top:16px}
+}
+@media (prefers-reduced-motion: reduce){ .rtl div{transition:none} }
 </style>
 </head>
 <body>
@@ -118,17 +146,20 @@ footer{margin-top:36px;font-size:.78rem;color:var(--muted)}
   <button type="button" data-tab="his" aria-pressed="false">Weatherman's feed</button>
 </div>
 <main>
-<header>
-  <h1>Chennai Mazhai</h1>
-  <p>Hyperlocal rain for your part of Chennai, in plain words</p>
-</header>
-<nav class="areas" id="areas" aria-label="Choose your area"></nav>
-<section class="radar" aria-label="Next 2 hours from radar">
-  <h2 class="label">Next 2 hours, from radar</h2>
-  <p class="rhead serif" id="rhead">Loading radar…</p>
-  <p class="rbody" id="rbody"></p>
-  <div class="rtl" id="rtl" aria-hidden="true"></div>
-  <div class="rtl-axis"><span>Now</span><span>+1 hr</span><span>+2 hrs</span></div>
+<section class="hero" aria-label="Rain in the next 2 hours">
+  <canvas class="rainfx" id="rainfx" aria-hidden="true"></canvas>
+  <h1 class="brand"><span class="city serif">Chennai</span><span class="ta" lang="ta">மழை</span></h1>
+  <p class="tag">Hyperlocal rain for your part of Chennai, in plain words</p>
+  <nav class="areas" id="areas" aria-label="Choose your area"></nav>
+  <div class="now">
+    <h2 class="label">Next 2 hours, from radar</h2>
+    <p class="rhead serif" id="rhead">Loading radar…</p>
+    <p class="rbody" id="rbody"></p>
+    <div class="rtl" id="rtl" aria-hidden="true"></div>
+    <div class="rtl-axis"><span>Now</span><span>+1 hr</span><span>+2 hrs</span></div>
+  </div>
+</section>
+<section class="card" aria-label="Radar map">
   <div class="map"><canvas id="rmap" width="480" height="480" role="img" aria-label="Rain radar map around Chennai"></canvas><span class="maptag" id="maptag"></span></div>
   <div class="rctl" id="rctl" role="group" aria-label="Radar view">
     <button type="button" data-v="replay">Replay last 2 hrs</button>
@@ -313,6 +344,7 @@ function render(a, F){
       : `Mostly dry in ${a.n}, with a small chance of a shower ${when}.`;
   }
   const maxC = Math.max(0,...remaining.map(b=>b.chance));
+  if(radar.state!=="ready" || !radar.analysable) rainFX.set(maxC>=0.6?2:maxC>=0.2?1:0, 0);
   const umbrella = maxC>=0.4? "☔ Carry an umbrella" : maxC>=0.2? "🌂 Keep one in the bag, just in case" : "😎 No umbrella needed";
   const agree = focus? Math.max(focus.chance,1-focus.chance) : 1;
   const conf = agree>=0.8? "High confidence — the models agree" : agree>=0.6? "Medium confidence" : "Low confidence — the models disagree, check again in a few hours";
@@ -329,7 +361,7 @@ function render(a, F){
 
     <section class="ribbon" aria-label="Rain over the next two days">
       <h2>Today and tomorrow</h2>
-      <div class="strip">${strip.map(b=>`<div class="${b.date===now.date&&(b.b+1)*6<=now.hour?"past":""}" style="background:${ribbonColor(b)}" title="${BLOCKS[b.b]}: ${blockText(b)}"></div>`).join("")}</div>
+      <div class="strip">${strip.map(b=>`<div class="${b.date===now.date&&(b.b+1)*6<=now.hour?"past":""}" style="height:${b.chance<0.2?9:Math.round(20+b.chance*80)}%;background:${ribbonColor(b)}" title="${BLOCKS[b.b]}: ${blockText(b)}"></div>`).join("")}</div>
       <div class="strip-labels">${strip.map(b=>`<span>${["12a","6a","12p","6p"][b.b]}</span>`).join("")}</div>
       <div class="daysplit"><span>Today</span><span>Tomorrow</span></div>
       <ul class="blocks">
@@ -341,9 +373,9 @@ function render(a, F){
 
     <section class="section">
       <h2>Next 7 days</h2>
-      <div class="week">${F.days.map((d,i)=>{const [cat,em]=imdCategory(d.med); return `
+      <div class="week">${F.days.map((d,i)=>{const [cat]=imdCategory(d.med), fill=d.med<0.1?0:Math.min(100,Math.round(Math.log10(d.med+1)/Math.log10(201)*100)); return `
         <div class="day"><b>${i===0?"Today":new Date(d.date).toLocaleDateString("en-IN",{weekday:"short"})}</b>
-        <span class="em" aria-hidden="true">${em}</span><span class="cat">${cat}</span>${d.med>=0.1?fmt(d.med)+" mm":"—"}</div>`}).join("")}</div>
+        <span class="gauge" aria-hidden="true"><i class="${d.med>=64.5?"hv":""}" style="height:${fill}%"></i></span><span class="cat">${cat}</span>${d.med>=0.1?fmt(d.med)+" mm":"—"}</div>`}).join("")}</div>
     </section>
 
     <section class="section">
@@ -413,6 +445,49 @@ function renderFallback(a,R){
     <section class="section"><h2>What's going on</h2><div class="season">${esc(seasonNote(nowIST().month,a))}</div></section>
     <div class="warn">Live model data couldn't load here, so this summary comes from a web search${R.sources?.length?" ("+esc(R.sources.join(", "))+")":""}. Open the app from a regular web page for the full model-by-model forecast.</div>`;
 }
+
+
+/* ---------- rain on the window ---------- */
+const rainFX = (()=>{
+  const cv = document.getElementById("rainfx"), g = cv.getContext("2d");
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W=0,H=0,dpr=1,drops=[],beads=[],ripples=[],level=-1,slant=0.12,running=false,visible=true,raf=0;
+  const COUNT=[14,60,130,220,320], SPEED=[5,8,10,12,14];
+  function resize(){
+    dpr=Math.min(2,devicePixelRatio||1); W=cv.clientWidth; H=cv.clientHeight;
+    cv.width=W*dpr; cv.height=H*dpr; g.setTransform(dpr,0,0,dpr,0,0);
+    beads=[...Array(Math.round(W*H/5200))].map(()=>({x:Math.random()*W,y:Math.random()*H,r:0.8+Math.random()*2.6}));
+    fill();
+  }
+  function mk(top){ const l=Math.max(level,0); return {x:Math.random()*(W+80)-40,y:top?-Math.random()*40:Math.random()*H,
+    len:8+Math.random()*(10+l*6),v:SPEED[l]*(0.7+Math.random()*0.6),a:0.18+Math.random()*0.35}; }
+  function fill(){ const n=COUNT[Math.max(level,0)]; while(drops.length<n) drops.push(mk(false)); drops.length=n; }
+  function frame(){
+    g.clearRect(0,0,W,H);
+    // condensation beads on the glass
+    for(const b of beads){ const gr=g.createRadialGradient(b.x-b.r*.3,b.y-b.r*.3,0,b.x,b.y,b.r);
+      gr.addColorStop(0,"rgba(255,255,255,.35)"); gr.addColorStop(1,"rgba(255,255,255,.04)");
+      g.fillStyle=gr; g.beginPath(); g.arc(b.x,b.y,b.r,0,7); g.fill(); }
+    g.lineCap="round"; g.lineWidth=1.2;
+    for(const d of drops){
+      g.strokeStyle=`rgba(210,232,250,${d.a})`;
+      g.beginPath(); g.moveTo(d.x,d.y); g.lineTo(d.x-slant*d.len,d.y+d.len); g.stroke();
+      if(!still){ d.y+=d.v; d.x-=slant*d.v;
+        if(d.y>H){ if(level>=1 && Math.random()<.35) ripples.push({x:d.x,y:H-6-Math.random()*14,r:1,a:.5}); Object.assign(d,mk(true)); } }
+    }
+    for(const r of ripples){ g.strokeStyle=`rgba(210,232,250,${r.a})`; g.beginPath(); g.ellipse(r.x,r.y,r.r*2.2,r.r*.6,0,0,7); g.stroke(); r.r+=.5; r.a-=.025; }
+    ripples=ripples.filter(r=>r.a>0);
+    if(!still && running && visible) raf=requestAnimationFrame(frame);
+  }
+  function start(){ cancelAnimationFrame(raf); running=true; frame(); }
+  new ResizeObserver(resize).observe(cv);
+  new IntersectionObserver(e=>{ visible=e[0].isIntersecting; if(visible) start(); }).observe(cv);
+  document.addEventListener("visibilitychange",()=>{ visible=!document.hidden; if(visible) start(); });
+  return { set(lv, vx){ const nl=Math.max(0,Math.min(4,lv|0));
+      slant = vx? Math.max(-.35,Math.min(.35,-vx*0.6)) : 0.12;
+      if(nl!==level){ level=nl; fill(); } start(); } };
+})();
+rainFX.set(1, 0);
 
 /* ---------- radar nowcast ---------- */
 const RZ = 7, TILE = 256, GRID = 3, W = GRID*TILE, CROP = 240;
@@ -542,6 +617,7 @@ function showView(v){
 }
 function renderRadar(a){
   if(radar.state==="loading"){ $("#rhead").textContent="Loading radar…"; return; }
+  document.querySelector(".card").hidden = radar.state==="error";
   if(radar.state==="error"){
     $("#rhead").textContent="Radar couldn't load here.";
     $("#rbody").textContent="It loads when the app is opened as a regular web page, for example on GitHub Pages. The model forecast below still works.";
@@ -551,7 +627,8 @@ function renderRadar(a){
     const nc=nowcast(a), [h,b]=nowcastWords(a,nc);
     $("#rhead").textContent=h; $("#rbody").textContent=b;
     $("#compare").textContent=`Our radar for ${a.n}: ${h}`;
-    $("#rtl").innerHTML=nc.steps.slice(0,12).map(s=>`<div style="background:${segColor(s.v)}" title="+${s.m} min: ${s.v?INT[s.v]:"dry"}"></div>`).join("");
+    rainFX.set(Math.max(...nc.steps.slice(0,7).map(s=>s.v)), radar.vx);
+    $("#rtl").innerHTML=nc.steps.slice(0,12).map(s=>`<div style="height:${[5,30,55,80,100][s.v]}%;background:var(--d${s.v})" title="+${s.m} min: ${s.v?INT[s.v]:"dry"}"></div>`).join("");
   } else {
     $("#rhead").textContent="Radar map loaded, but this browser blocked the rain analysis.";
     $("#rbody").textContent="You can still read the map and replay the last 2 hours.";

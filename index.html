@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chennai Mazhai — hyperlocal rain</title>
+<style>
+:root{
+  --sky:#E6EDF1; --paper:#F5F8FA; --ink:#1C2A35; --muted:#5B7083;
+  --sea:#13707F; --rain:#2F5DA8; --heavy:#7A2E8C; --dry:#C9D5DC; --line:#C7D3DA;
+  --warn-bg:#FFF3D6; --warn-ink:#6B4A00;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --sky:#121C24; --paper:#1A2731; --ink:#E3EAEE; --muted:#93A6B4;
+    --sea:#4FB3C2; --rain:#6E9BE6; --heavy:#C38AD4; --dry:#2C3B46; --line:#2E3F4B;
+    --warn-bg:#3A2E10; --warn-ink:#F2D58A;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sky);color:var(--ink);
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+main{max-width:640px;margin:0 auto;padding:20px 18px 48px;min-width:0}
+.layout{max-width:1200px;margin:0 auto}
+.switch{display:flex;gap:4px;margin:14px 18px 0;padding:4px;background:var(--paper);border-radius:12px}
+.switch button{flex:1;font:inherit;font-size:.9rem;padding:8px;border:0;border-radius:9px;background:none;color:var(--muted);cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--sea);color:var(--paper);font-weight:600}
+.feed{padding:20px 18px 48px}
+.feed h2{font-size:1.05rem;font-weight:600;margin:0;color:var(--sea)}
+.feed .sub{margin:2px 0 12px;color:var(--muted);font-size:.85rem}
+.feedframe{background:#fff;border-radius:12px;overflow:hidden;height:calc(100vh - 210px);min-height:520px}
+.feedframe iframe{border:0;width:100%;height:100%;display:block}
+.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.links a{font-size:.85rem;padding:6px 11px;border-radius:8px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.links a:focus-visible{outline:2px solid var(--rain);outline-offset:2px}
+.compare{font-size:.85rem;background:var(--paper);border-left:3px solid var(--rain);padding:10px 12px;border-radius:0 8px 8px 0;margin-bottom:12px}
+@media (max-width:979px){
+  .layout[data-tab="ours"] .feed{display:none}
+  .layout[data-tab="his"] main{display:none}
+}
+@media (min-width:980px){
+  .switch{display:none}
+  .layout{display:grid;grid-template-columns:minmax(0,640px) minmax(340px,500px);gap:24px;justify-content:center}
+  .feed{position:sticky;top:0;align-self:start;height:100vh;overflow:auto}
+}
+.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+header h1{font-size:1.05rem;font-weight:600;margin:0;color:var(--sea)}
+header p{margin:2px 0 0;color:var(--muted);font-size:.85rem}
+.areas{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;scrollbar-width:none}
+.areas::-webkit-scrollbar{display:none}
+.areas button{flex:none;border:1px solid var(--line);background:var(--paper);color:var(--ink);
+  padding:7px 13px;border-radius:999px;font:inherit;font-size:.9rem;cursor:pointer}
+.areas button[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:var(--paper)}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--rain);outline-offset:2px}
+.headline{font-size:1.9rem;line-height:1.2;margin:22px 0 10px;font-weight:500}
+.verdict{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;color:var(--muted);font-size:.95rem}
+.verdict strong{color:var(--ink)}
+.conf{padding:2px 9px;border-radius:6px;border:1px solid var(--line);font-size:.82rem}
+.ribbon{margin:26px 0 8px}
+.ribbon h2,.section h2{font-size:.95rem;font-weight:600;margin:0 0 10px}
+.strip{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;height:54px}
+.strip div{border-radius:4px;background:var(--dry);position:relative}
+.strip div.past{opacity:.35}
+.strip-labels{display:grid;grid-template-columns:repeat(8,1fr);font-size:.7rem;color:var(--muted);margin-top:4px}
+.strip-labels span{text-align:center}
+.daysplit{display:grid;grid-template-columns:1fr 1fr;font-size:.75rem;color:var(--muted);margin-top:2px}
+.daysplit span:last-child{border-left:1px solid var(--line);padding-left:6px}
+.blocks{list-style:none;padding:0;margin:18px 0 0}
+.blocks li{display:grid;grid-template-columns:7.5rem 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.blocks .when{color:var(--muted);font-size:.9rem}
+.blocks .agree{display:block;color:var(--muted);font-size:.8rem}
+.section{margin-top:32px}
+.week{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.week::-webkit-scrollbar{display:none}
+.day{flex:1 0 76px;background:var(--paper);border-radius:10px;padding:10px 8px;text-align:center;font-size:.8rem}
+.day b{display:block;font-size:.85rem}
+.day .em{font-size:1.4rem;display:block;margin:4px 0}
+.day .cat{color:var(--muted);display:block;min-height:2.4em}
+.season{background:var(--paper);border-left:3px solid var(--sea);padding:12px 14px;border-radius:0 8px 8px 0;font-size:.92rem}
+.warn{background:var(--warn-bg);color:var(--warn-ink);padding:10px 12px;border-radius:8px;font-size:.88rem;margin-top:14px}
+details{margin-top:32px;border-top:2px solid var(--ink);padding-top:12px}
+summary{cursor:pointer;font-weight:600}
+details p,details li{font-size:.9rem}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;font-size:.8rem;width:100%;margin:10px 0}
+th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+.bars{display:flex;align-items:flex-end;gap:1px;height:90px;border-bottom:1px solid var(--line);margin-top:8px}
+.bars div{flex:1;background:var(--rain);min-height:1px;border-radius:1px 1px 0 0}
+.bars-axis{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted)}
+.status{color:var(--muted);margin-top:30px}
+.radar{margin-top:18px;background:var(--paper);border-radius:14px;padding:16px 16px 14px}
+.label{font-size:.95rem;font-weight:600;margin:0 0 6px;color:var(--sea)}
+.rhead{font-size:1.45rem;line-height:1.25;margin:0 0 6px;font-weight:500}
+.rbody{margin:0;color:var(--muted);font-size:.95rem}
+.rtl{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;height:22px;margin-top:14px}
+.rtl div{background:var(--dry);border-radius:3px}
+.rtl-axis{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-top:3px}
+.map{position:relative;margin-top:14px;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--dry)}
+.map canvas{width:100%;height:100%;display:block}
+.maptag{position:absolute;left:8px;bottom:8px;background:var(--paper);color:var(--ink);font-size:.75rem;padding:2px 8px;border-radius:6px;opacity:.9}
+.rctl{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.rctl button{font:inherit;font-size:.85rem;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}
+.rctl button[aria-pressed="true"]{border-color:var(--sea);color:var(--sea);font-weight:600}
+.rnote{font-size:.78rem;color:var(--muted);margin:10px 0 0}
+.later{margin-top:34px}
+.later .headline{margin-top:4px}
+footer{margin-top:36px;font-size:.78rem;color:var(--muted)}
+.retry{margin-top:10px;font:inherit;padding:7px 14px;border-radius:8px;border:1px solid var(--sea);background:none;color:var(--sea);cursor:pointer}
+</style>
+</head>
+<body>
+<div class="layout" id="layout" data-tab="ours">
+<div class="switch" role="group" aria-label="Choose view">
+  <button type="button" data-tab="ours" aria-pressed="true">Our forecast</button>
+  <button type="button" data-tab="his" aria-pressed="false">Weatherman's feed</button>
+</div>
+<main>
+<header>
+  <h1>Chennai Mazhai</h1>
+  <p>Hyperlocal rain for your part of Chennai, in plain words</p>
+</header>
+<nav class="areas" id="areas" aria-label="Choose your area"></nav>
+<section class="radar" aria-label="Next 2 hours from radar">
+  <h2 class="label">Next 2 hours, from radar</h2>
+  <p class="rhead serif" id="rhead">Loading radar…</p>
+  <p class="rbody" id="rbody"></p>
+  <div class="rtl" id="rtl" aria-hidden="true"></div>
+  <div class="rtl-axis"><span>Now</span><span>+1 hr</span><span>+2 hrs</span></div>
+  <div class="map"><canvas id="rmap" width="480" height="480" role="img" aria-label="Rain radar map around Chennai"></canvas><span class="maptag" id="maptag"></span></div>
+  <div class="rctl" id="rctl" role="group" aria-label="Radar view">
+    <button type="button" data-v="replay">Replay last 2 hrs</button>
+    <button type="button" data-v="0" aria-pressed="true">Latest</button>
+    <button type="button" data-v="30">+30 min</button>
+    <button type="button" data-v="60">+60 min</button>
+  </div>
+  <p class="rnote" id="rnote"></p>
+</section>
+<div id="out" class="later"><p class="status">Loading forecast…</p></div>
+<footer>
+  Radar from RainViewer, map © CARTO © OpenStreetMap. The 2-hour outlook projects the radar's recent rain movement forward.
+  Model forecast from Open-Meteo, blending five global weather models (ECMWF, GFS, ICON, GEM, JMA).
+  This is not an official forecast. For cyclone and flood warnings, follow IMD Chennai and the Greater Chennai Corporation.
+</footer>
+</main>
+<aside class="feed" aria-label="Tamil Nadu Weatherman live feed">
+  <h2>Tamil Nadu Weatherman</h2>
+  <p class="sub">Pradeep John's latest posts, straight from his Facebook page</p>
+  <div class="compare" id="compare">Our radar check for your area will show here, so you can compare it with his latest post.</div>
+  <div class="feedframe" id="feedframe"></div>
+  <div class="links">
+    <a id="lnk-fb" target="_blank" rel="noopener">Open on Facebook</a>
+    <a id="lnk-x" target="_blank" rel="noopener">Open on X</a>
+    <a id="lnk-web" target="_blank" rel="noopener">His website</a>
+  </div>
+  <p class="rnote">Shown as he posts it; this app doesn't edit or summarise his updates. If the feed stays blank, your browser or this preview is blocking Facebook embeds, so use the links.</p>
+</aside>
+</div>
+
+<script>
+const AREAS = [
+  {n:"Besant Nagar",lat:13.0003,lon:80.2667,coast:true},
+  {n:"Adyar",lat:13.0067,lon:80.2570,coast:true},
+  {n:"Mylapore",lat:13.0339,lon:80.2619,coast:true},
+  {n:"T. Nagar",lat:13.0418,lon:80.2341},
+  {n:"Nungambakkam",lat:13.0607,lon:80.2427},
+  {n:"Anna Nagar",lat:13.0850,lon:80.2101},
+  {n:"Guindy",lat:13.0067,lon:80.2206},
+  {n:"Velachery",lat:12.9791,lon:80.2209},
+  {n:"Sholinganallur",lat:12.9010,lon:80.2279,coast:true},
+  {n:"Meenambakkam",lat:12.9941,lon:80.1709},
+  {n:"Tambaram",lat:12.9249,lon:80.1000},
+  {n:"Porur",lat:13.0382,lon:80.1564},
+  {n:"Ambattur",lat:13.1143,lon:80.1548},
+  {n:"Ennore",lat:13.2146,lon:80.3203,coast:true}
+];
+const MODELS = {ecmwf_ifs025:"ECMWF",gfs_seamless:"GFS",icon_seamless:"ICON",gem_seamless:"GEM",jma_seamless:"JMA"};
+const BLOCKS = ["Late night","Morning","Afternoon","Evening"];
+const BLOCK_HRS = ["12–6 am","6 am–12","12–6 pm","6 pm–12"];
+const cache = {};
+let current = AREAS[0];
+
+const $ = s => document.querySelector(s);
+const median = a => { const s=[...a].sort((x,y)=>x-y); const m=s.length>>1; return s.length? (s.length%2? s[m] : (s[m-1]+s[m])/2) : 0; };
+const fmt = x => x<0.1 ? "0" : x<10 ? x.toFixed(1) : Math.round(x).toString();
+const esc = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function nowIST(){
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",hourCycle:"h23"})
+    .formatToParts(new Date()).map(x=>[x.type,x.value]));
+  return {date:`${p.year}-${p.month}-${p.day}`, hour:+p.hour, month:+p.month};
+}
+
+/* ---------- plain-language helpers ---------- */
+function chanceWord(c){
+  if(c>=0.8) return "very likely"; if(c>=0.6) return "likely";
+  if(c>=0.4) return "possible"; if(c>=0.2) return "a small chance"; return "dry";
+}
+function intensityWord(mm){ // per 6-hour block
+  if(mm<1) return "a brief drizzle"; if(mm<7.5) return "light to moderate showers";
+  if(mm<35) return "heavy spells"; return "very heavy rain — expect waterlogging";
+}
+function imdCategory(mm){ // IMD 24-hour categories
+  if(mm<0.1) return ["Dry","☀️"]; if(mm<2.5) return ["Very light","🌤️"];
+  if(mm<15.6) return ["Light rain","🌦️"]; if(mm<64.5) return ["Moderate","🌧️"];
+  if(mm<115.6) return ["Heavy","⛈️"]; if(mm<204.5) return ["Very heavy","🌊"]; return ["Extremely heavy","🚨"];
+}
+function blockText(b){
+  if(b.chance<0.2) return "Dry";
+  const cw = chanceWord(b.chance);
+  return cw==="a small chance" ? `A small chance of ${intensityWord(b.med).replace(/^a /,"")}` :
+    `${intensityWord(b.med).replace(/^./,c=>c.toUpperCase())}, ${cw}`;
+}
+function ribbonColor(b){
+  if(b.chance<0.2) return "var(--dry)";
+  const base = b.med>=35 ? "var(--heavy)" : "var(--rain)";
+  return `color-mix(in srgb, ${base} ${Math.round(30+b.chance*70)}%, var(--dry))`;
+}
+function windWords(deg){
+  if(deg==null) return "";
+  if(deg>=45 && deg<=135) return "Winds are blowing in from the sea (easterly). That moist air is what feeds Chennai's monsoon showers, and coastal areas usually get them first.";
+  if(deg>=225 && deg<=315) return "Winds are coming over land from the west. Days run hotter; if the sea breeze sets in late, storms can build in the evening.";
+  if(deg>135 && deg<225) return "Winds are from the south, along the coast. Usually a quieter, humid pattern.";
+  return "Winds are from the north/northeast, often seen as the northeast monsoon sets in or a system passes to the north.";
+}
+function seasonNote(month, area){
+  if(month>=10 && month<=12) return `Northeast monsoon season — Chennai's main rainy season. Rain mostly comes in from the Bay of Bengal, often in the late night and early morning${area.coast?", and coastal spots like "+area.n+" tend to catch it first":""}. Low-pressure systems and cyclones can turn a normal day into a very wet one quickly.`;
+  if(month>=6 && month<=9) return `Southwest monsoon season. Chennai sits in the rain shadow, so most rain comes from evening and late-night thunderstorms that build over the western suburbs${!area.coast?" (like "+area.n+")":""} and drift towards the coast.`;
+  if(month>=3 && month<=5) return "Summer. Mostly dry; the afternoon sea breeze brings relief near the coast. The odd thunderstorm can pop up in May.";
+  return "Winter. Mostly dry and pleasant after the monsoon ends, with occasional light showers in January.";
+}
+
+/* ---------- data ---------- */
+async function fetchModels(a){
+  const vars = "precipitation,cloud_cover,wind_speed_10m,wind_direction_10m,relative_humidity_2m,cape";
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${a.lat}&longitude=${a.lon}&hourly=${vars}&models=${Object.keys(MODELS).join(",")}&timezone=Asia%2FKolkata&forecast_days=7`;
+  const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 9000);
+  try{
+    const r = await fetch(url,{signal:ctl.signal});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+function process(j){
+  const H = j.hourly, times = H.time;
+  const models = Object.keys(MODELS).filter(m => (H["precipitation_"+m]||[]).some(v=>v!=null));
+  if(!models.length) throw new Error("no model data");
+  const dates = [...new Set(times.map(t=>t.slice(0,10)))];
+  const idx = {}; times.forEach((t,i)=>{ (idx[t.slice(0,10)] ??= [[],[],[],[]])[Math.floor(+t.slice(11,13)/6)].push(i); });
+
+  const blocks = [], days = [];
+  for(const d of dates){
+    const dayTot = {};
+    for(let b=0;b<4;b++){
+      const totals = {};
+      for(const m of models){
+        const vals = idx[d][b].map(i=>H["precipitation_"+m][i]).filter(v=>v!=null);
+        if(vals.length){ totals[m] = vals.reduce((x,y)=>x+y,0); dayTot[m]=(dayTot[m]||0)+totals[m]; }
+      }
+      const v = Object.values(totals);
+      blocks.push({date:d,b,totals,med:median(v),chance: v.length? v.filter(x=>x>=0.5).length/v.length : 0});
+    }
+    const dv = Object.values(dayTot);
+    days.push({date:d,totals:dayTot,med:median(dv),chance: dv.length? dv.filter(x=>x>=2.5).length/dv.length:0});
+  }
+
+  // hourly median precip (next 48h) + atmosphere signals
+  const now = nowIST(); const startKey = `${now.date}T${String(now.hour).padStart(2,"0")}:00`;
+  let s = times.indexOf(startKey); if(s<0) s=0;
+  const hourly = [];
+  for(let i=s;i<Math.min(s+48,times.length);i++){
+    const v = models.map(m=>H["precipitation_"+m][i]).filter(x=>x!=null);
+    hourly.push({t:times[i], mm:median(v)});
+  }
+  const pick = (name,i)=>models.map(m=>(H[`${name}_${m}`]||[])[i]).filter(x=>x!=null);
+  let u=0,w=0,rh=[],capeMax=[];
+  for(let i=s;i<Math.min(s+24,times.length);i++){
+    const dirs=pick("wind_direction_10m",i), spd=pick("wind_speed_10m",i);
+    dirs.forEach((d,k)=>{const sp=spd[k]??1; u+=sp*Math.sin(d*Math.PI/180); w+=sp*Math.cos(d*Math.PI/180);});
+    rh.push(...pick("relative_humidity_2m",i));
+  }
+  for(const m of models){
+    const c=(H["cape_"+m]||[]).slice(s,s+24).filter(x=>x!=null);
+    if(c.length) capeMax.push(Math.max(...c));
+  }
+  const windDir = (u||w)? (Math.atan2(u,w)*180/Math.PI+360)%360 : null;
+  return {models,blocks,days,hourly,windDir,rh:rh.length?median(rh):null,cape:capeMax.length?median(capeMax):null,now};
+}
+
+/* ---------- render: live model view ---------- */
+function render(a, F){
+  const {now} = F;
+  const todayBlocks = F.blocks.filter(b=>b.date===now.date);
+  const remaining = todayBlocks.filter(b=>(b.b+1)*6>now.hour);
+  const tomorrowDate = F.days[1]?.date;
+  const tomorrowBlocks = F.blocks.filter(b=>b.date===tomorrowDate);
+
+  // headline
+  const wet = remaining.filter(b=>b.chance>=0.2).sort((x,y)=>y.chance-x.chance);
+  let headline, focus;
+  if(!remaining.length || !wet.length){
+    const tw = tomorrowBlocks.filter(b=>b.chance>=0.4).sort((x,y)=>y.chance-x.chance)[0];
+    headline = `Mostly dry for the rest of today in ${a.n}.` + (tw?` Rain ${chanceWord(tw.chance)} tomorrow ${BLOCKS[tw.b].toLowerCase()}.`:"");
+    focus = remaining[0] || tomorrowBlocks[0];
+  } else {
+    focus = wet[0];
+    const when = focus.b===0? "in the early hours" : focus.b===3? "this evening and tonight" : `this ${BLOCKS[focus.b].toLowerCase()}`;
+    headline = focus.chance>=0.4
+      ? `${intensityWord(focus.med).replace(/^./,c=>c.toUpperCase())} ${focus.chance>=0.6?"expected":"possible"} in ${a.n} ${when}.`
+      : `Mostly dry in ${a.n}, with a small chance of a shower ${when}.`;
+  }
+  const maxC = Math.max(0,...remaining.map(b=>b.chance));
+  const umbrella = maxC>=0.4? "☔ Carry an umbrella" : maxC>=0.2? "🌂 Keep one in the bag, just in case" : "😎 No umbrella needed";
+  const agree = focus? Math.max(focus.chance,1-focus.chance) : 1;
+  const conf = agree>=0.8? "High confidence — the models agree" : agree>=0.6? "Medium confidence" : "Low confidence — the models disagree, check again in a few hours";
+
+  const strip = [...todayBlocks,...tomorrowBlocks].slice(0,8);
+  const day0 = imdCategory(F.days[0].med);
+  const heavyDay = F.days.slice(0,3).find(d=>d.med>=64.5 && d.chance>=0.6);
+
+  $("#out").innerHTML = `
+    <h2 class="label">Rest of today and the week, from weather models</h2>
+    <p class="headline serif">${esc(headline)}</p>
+    <div class="verdict"><strong>${umbrella}</strong><span class="conf">${conf}</span></div>
+    ${heavyDay?`<div class="warn">Heavy rain signal on ${new Date(heavyDay.date).toLocaleDateString("en-IN",{weekday:"long"})} (around ${fmt(heavyDay.med)} mm). Check IMD warnings and avoid low-lying roads.</div>`:""}
+
+    <section class="ribbon" aria-label="Rain over the next two days">
+      <h2>Today and tomorrow</h2>
+      <div class="strip">${strip.map(b=>`<div class="${b.date===now.date&&(b.b+1)*6<=now.hour?"past":""}" style="background:${ribbonColor(b)}" title="${BLOCKS[b.b]}: ${blockText(b)}"></div>`).join("")}</div>
+      <div class="strip-labels">${strip.map(b=>`<span>${["12a","6a","12p","6p"][b.b]}</span>`).join("")}</div>
+      <div class="daysplit"><span>Today</span><span>Tomorrow</span></div>
+      <ul class="blocks">
+        ${strip.filter(b=>!(b.date===now.date&&(b.b+1)*6<=now.hour)).map(b=>`
+          <li><span class="when">${b.date===now.date?"Today":"Tomorrow"} ${BLOCKS[b.b].toLowerCase()}<span class="agree">${BLOCK_HRS[b.b]}</span></span>
+          <span>${esc(blockText(b))}${b.chance>=0.2?`<span class="agree">${Math.round(b.chance*Object.keys(b.totals).length)} of ${Object.keys(b.totals).length} models show rain · about ${fmt(b.med)} mm</span>`:""}</span></li>`).join("")}
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Next 7 days</h2>
+      <div class="week">${F.days.map((d,i)=>{const [cat,em]=imdCategory(d.med); return `
+        <div class="day"><b>${i===0?"Today":new Date(d.date).toLocaleDateString("en-IN",{weekday:"short"})}</b>
+        <span class="em" aria-hidden="true">${em}</span><span class="cat">${cat}</span>${d.med>=0.1?fmt(d.med)+" mm":"—"}</div>`}).join("")}</div>
+    </section>
+
+    <section class="section">
+      <h2>What's going on</h2>
+      <div class="season">${esc(seasonNote(now.month,a))}${F.windDir!=null?"<br><br>"+esc(windWords(F.windDir)):""}</div>
+    </section>
+
+    ${renderDetails(a,F,strip)}
+  `;
+}
+
+function renderDetails(a,F,strip){
+  const maxH = Math.max(1,...F.hourly.map(h=>h.mm));
+  const spread = F.days[0]? Object.values(F.days[0].totals) : [];
+  const capeTxt = F.cape==null? "not available" :
+    `${Math.round(F.cape)} J/kg — ${F.cape>1500?"high instability; thunderstorms can build fast":F.cape>500?"moderate instability; showers can turn thundery":"low; showers stay mostly light"}`;
+  return `
+  <details>
+    <summary>Technical details: how this forecast is made</summary>
+    <p>Five independent global models are pulled for ${esc(a.n)} (${a.lat.toFixed(3)}°N, ${a.lon.toFixed(3)}°E). Each block's rain amount is the <em>median</em> across models, and the "chance" is the share of models showing at least 0.5 mm in that 6-hour block. Daily categories follow IMD's 24-hour rainfall classes.</p>
+
+    <h3 style="font-size:.9rem;margin:16px 0 0">Model by model (mm per block)</h3>
+    <div class="tablewrap"><table>
+      <tr><th>Block</th>${F.models.map(m=>`<th>${MODELS[m]}</th>`).join("")}<th>Median</th></tr>
+      ${strip.map(b=>`<tr><td>${b.date===F.now.date?"Today":"Tmrw"} ${BLOCKS[b.b].toLowerCase()}</td>
+        ${F.models.map(m=>`<td>${b.totals[m]!=null?fmt(b.totals[m]):"–"}</td>`).join("")}<td><b>${fmt(b.med)}</b></td></tr>`).join("")}
+    </table></div>
+    <p>Today's model spread: ${spread.length?`${fmt(Math.min(...spread))} to ${fmt(Math.max(...spread))} mm`:"n/a"}. A wide spread means the setup is uncertain — usually a system whose track the models disagree on.</p>
+
+    <h3 style="font-size:.9rem;margin:16px 0 0">Hourly rain, next 48 hours (median, peak ${fmt(maxH)} mm/h)</h3>
+    <div class="bars">${F.hourly.map(h=>`<div style="height:${Math.round(h.mm/maxH*100)}%" title="${h.t.slice(5).replace("T"," ")}: ${fmt(h.mm)} mm"></div>`).join("")}</div>
+    <div class="bars-axis"><span>Now</span><span>+24h</span><span>+48h</span></div>
+
+    <h3 style="font-size:.9rem;margin:16px 0 0">Atmosphere, next 24 hours</h3>
+    <ul>
+      <li>Wind direction (model-averaged): ${F.windDir!=null?Math.round(F.windDir)+"°":"n/a"}</li>
+      <li>Humidity (median): ${F.rh!=null?Math.round(F.rh)+"%":"n/a"}</li>
+      <li>Instability (CAPE, peak): ${capeTxt}</li>
+    </ul>
+
+    <h3 style="font-size:.9rem;margin:16px 0 0">Limits</h3>
+    <p>Global models run on 9–25 km grids, so neighbouring areas can look alike, and a single thunderstorm cell is smaller than one grid box. Forecasters like Tamil Nadu Weatherman add live radar and satellite tracking on top of this — for the next 1–3 hours, radar beats any model.</p>
+  </details>`;
+}
+
+/* ---------- fallback: Claude + web search ---------- */
+async function claudeFallback(a){
+  const prompt = `Search the web for the latest rain forecast for ${a.n}, Chennai, India for today and tomorrow (current date in IST: ${nowIST().date}). Check IMD Chennai and recent Tamil Nadu Weatherman (Pradeep John) updates if available.
+Respond ONLY with JSON, no markdown fences, in this shape:
+{"headline":"one plain-English sentence about rain in ${a.n} for the rest of today","umbrella":"yes|maybe|no","today":[{"when":"e.g. Evening","text":"plain words"}],"tomorrow":"one sentence","warnings":"any official warning or empty string","confidence":"high|medium|low","sources":["site names"]}`;
+  const r = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,tools:[{type:"web_search_20250305",name:"web_search"}],messages:[{role:"user",content:prompt}]})});
+  const data = await r.json();
+  const text = (data.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("\n").replace(/```json|```/g,"");
+  const s = text.indexOf("{"), e = text.lastIndexOf("}");
+  return JSON.parse(text.slice(s,e+1));
+}
+function renderFallback(a,R){
+  const um = {yes:"☔ Carry an umbrella",maybe:"🌂 Keep one in the bag, just in case",no:"😎 No umbrella needed"}[R.umbrella]||"";
+  $("#out").innerHTML = `
+    <h2 class="headline serif">${esc(R.headline)}</h2>
+    <div class="verdict"><strong>${um}</strong><span class="conf">${esc(R.confidence||"")} confidence</span></div>
+    ${R.warnings?`<div class="warn">${esc(R.warnings)}</div>`:""}
+    <section class="ribbon"><h2>Today</h2><ul class="blocks">
+      ${(R.today||[]).map(t=>`<li><span class="when">${esc(t.when)}</span><span>${esc(t.text)}</span></li>`).join("")}
+      <li><span class="when">Tomorrow</span><span>${esc(R.tomorrow)}</span></li></ul></section>
+    <section class="section"><h2>What's going on</h2><div class="season">${esc(seasonNote(nowIST().month,a))}</div></section>
+    <div class="warn">Live model data couldn't load here, so this summary comes from a web search${R.sources?.length?" ("+esc(R.sources.join(", "))+")":""}. Open the app from a regular web page for the full model-by-model forecast.</div>`;
+}
+
+/* ---------- radar nowcast ---------- */
+const RZ = 7, TILE = 256, GRID = 3, W = GRID*TILE, CROP = 240;
+const INT = ["","light","moderate","heavy","very heavy"];
+const radar = {state:"idle"};
+function globalPx(lat,lon){
+  const n = 2**RZ*TILE, r = lat*Math.PI/180;
+  return {x:(lon+180)/360*n, y:(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n};
+}
+const CEN = globalPx(13.03,80.21);
+const ORIGIN = {tx:Math.floor(CEN.x/TILE)-1, ty:Math.floor(CEN.y/TILE)-1};
+const localPx = (lat,lon) => { const g=globalPx(lat,lon); return {x:g.x-ORIGIN.tx*TILE, y:g.y-ORIGIN.ty*TILE}; };
+const C = localPx(13.03,80.21), SX0 = C.x-CROP/2, SY0 = C.y-CROP/2;
+const KM_PX = 156543.03*Math.cos(13.03*Math.PI/180)/2**RZ/1000; // ~1.2 km per pixel
+
+function loadImg(url){ return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin="anonymous"; i.onload=()=>res(i); i.onerror=rej; i.src=url; }); }
+async function composite(urlFn){
+  const c=document.createElement("canvas"); c.width=c.height=W; const g=c.getContext("2d"); let ok=0;
+  await Promise.all([...Array(GRID*GRID)].map(async(_,k)=>{
+    const dx=k%GRID, dy=(k/GRID)|0;
+    try{ g.drawImage(await loadImg(urlFn(ORIGIN.tx+dx,ORIGIN.ty+dy)),dx*TILE,dy*TILE); ok++; }catch(e){}
+  }));
+  return {c,ok};
+}
+// Universal Blue palette → rough rain class (0 none … 4 very heavy)
+function pxClass(d,i){
+  if(d[i+3]<60) return 0;
+  const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;
+  let h=0; if(mx>mn){ h = mx===r?((g-b)/(mx-mn))%6 : mx===g?(b-r)/(mx-mn)+2 : (r-g)/(mx-mn)+4; h=(h*60+360)%360; }
+  if(h>=160&&h<=260) return l>0.55?1:2;
+  if(h>=75&&h<160) return 2;
+  if(h>=30&&h<75) return 3;
+  return 4;
+}
+function classGrid(canvas){
+  const d=canvas.getContext("2d").getImageData(0,0,W,W).data, I=new Uint8Array(W*W);
+  for(let p=0;p<W*W;p++) I[p]=pxClass(d,p*4);
+  return I;
+}
+// Motion: find the shift that best lines up an older radar frame with the newest one
+function estimateMotion(Iold,Inew,dtMin){
+  const S=4,n=W/S,R=12, A=new Float32Array(n*n), B=new Float32Array(n*n);
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++){ const k=((y/S)|0)*n+((x/S)|0); A[k]+=Iold[y*W+x]; B[k]+=Inew[y*W+x]; }
+  const cells=[]; for(let k=0;k<n*n;k++) if(A[k]) cells.push(k);
+  if(cells.length<25) return {vx:0,vy:0,ok:false};
+  let best=0,bx=0,by=0;
+  for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){
+    let s=0;
+    for(const k of cells){ const x=k%n+dx,y=((k/n)|0)+dy; if(x>=0&&y>=0&&x<n&&y<n) s+=A[k]*B[y*n+x]; }
+    if(s>best){best=s;bx=dx;by=dy;}
+  }
+  return {vx:bx*S/dtMin, vy:by*S/dtMin, ok:best>0}; // pixels per minute
+}
+function sampleMax(I,x,y,r){
+  let m=0;
+  for(let j=-r;j<=r;j++)for(let i=-r;i<=r;i++){
+    if(i*i+j*j>r*r) continue; const xx=Math.round(x+i), yy=Math.round(y+j);
+    if(xx>=0&&yy>=0&&xx<W&&yy<W&&I[yy*W+xx]>m) m=I[yy*W+xx];
+  }
+  return m;
+}
+const bearing = (dx,dy) => (Math.atan2(dx,-dy)*180/Math.PI+360)%360;
+const compass = deg => ["north","northeast","east","southeast","south","southwest","west","northwest"][Math.round(deg/45)%8];
+
+function nowcast(a){
+  const P=localPx(a.lat,a.lon), {I,vx,vy,age}=radar, steps=[];
+  for(let m=0;m<=120;m+=10){ const t=m+age; steps.push({m, v:sampleMax(I,P.x-vx*t,P.y-vy*t,3)}); }
+  let nearest=null; const Rm=Math.round(150/KM_PX);
+  for(let y=Math.max(0,Math.floor(P.y-Rm)); y<Math.min(W,P.y+Rm); y+=2)
+    for(let x=Math.max(0,Math.floor(P.x-Rm)); x<Math.min(W,P.x+Rm); x+=2){
+      if(!I[y*W+x]) continue; const dd=Math.hypot(x-P.x,y-P.y);
+      if(dd<=Rm && (!nearest||dd<nearest.d)) nearest={d:dd,brg:bearing(x-P.x,y-P.y)};
+    }
+  return {steps,nearest};
+}
+function nowcastWords(a,nc){
+  const speed=Math.round(Math.hypot(radar.vx,radar.vy)*KM_PX*60);
+  const from=(bearing(radar.vx,radar.vy)+180)%360;
+  const fromTxt = from>=45&&from<=135 ? "in from the sea" : `from the ${compass(from)}`;
+  const moving = radar.motionOk&&speed>=5 ? ` The rain is moving ${fromTxt} at about ${speed} km/h.` : "";
+  const peak = Math.max(...nc.steps.map(s=>s.v));
+  if(nc.steps[0].v){
+    const end=nc.steps.find(s=>!s.v);
+    return [`Raining over ${a.n} now (${INT[nc.steps[0].v]}).`, (end?`Should ease in about ${end.m} minutes.`:"Likely to keep going for the next 2 hours.")+moving];
+  }
+  const arr=nc.steps.find(s=>s.v);
+  if(arr) return [`Rain likely to reach ${a.n} in about ${arr.m} minutes.`, `Expect ${INT[peak]} rain.${moving}`];
+  if(nc.nearest) return [`No rain heading for ${a.n} in the next 2 hours.`, `Nearest rain on radar is about ${Math.round(nc.nearest.d*KM_PX/5)*5||5} km to the ${compass(nc.nearest.brg)}.${moving}`];
+  return ["Radar is clear around Chennai.","No rain showing within 150 km."];
+}
+const segColor = v => ["var(--dry)","color-mix(in srgb, var(--rain) 45%, var(--dry))","color-mix(in srgb, var(--rain) 75%, var(--dry))","var(--rain)","var(--heavy)"][v];
+const hhmm = unix => new Date(unix*1000).toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"});
+
+let replayTimer=null, view=0;
+function drawMap(frameCanvas, shiftMin, tag){
+  const g=$("#rmap").getContext("2d"), s=480/CROP;
+  g.clearRect(0,0,480,480);
+  g.drawImage(radar.base,SX0,SY0,CROP,CROP,0,0,480,480);
+  if(frameCanvas){
+    g.globalAlpha=.85;
+    g.drawImage(frameCanvas,SX0-radar.vx*shiftMin,SY0-radar.vy*shiftMin,CROP,CROP,0,0,480,480);
+    g.globalAlpha=1;
+  }
+  const P=localPx(current.lat,current.lon), x=(P.x-SX0)*s, y=(P.y-SY0)*s;
+  const ink=getComputedStyle(document.documentElement).getPropertyValue("--ink");
+  g.strokeStyle=ink; g.lineWidth=3; g.beginPath(); g.arc(x,y,9,0,7); g.stroke();
+  g.fillStyle=ink; g.font="600 22px system-ui"; g.fillText(current.n,x+14,y+7);
+  if(radar.motionOk && Math.hypot(radar.vx,radar.vy)>0.07){ // direction-of-travel arrow, top right
+    const ang=Math.atan2(radar.vy,radar.vx), cx=430, cy=50;
+    g.save(); g.translate(cx,cy); g.rotate(ang); g.lineWidth=4;
+    g.beginPath(); g.moveTo(-24,0); g.lineTo(20,0); g.moveTo(8,-11); g.lineTo(22,0); g.lineTo(8,11); g.stroke(); g.restore();
+  }
+  $("#maptag").textContent=tag;
+}
+function showView(v){
+  clearInterval(replayTimer); view=v;
+  document.querySelectorAll("#rctl button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===String(v)));
+  if(radar.state!=="ready") return;
+  const last=radar.frames.at(-1);
+  if(v==="replay"){
+    let k=0; const F=radar.frames;
+    const step=()=>{ drawMap(F[k].c,0,`Radar at ${hhmm(F[k].time)}`); k++; if(k>=F.length){ clearInterval(replayTimer); setTimeout(()=>showView(0),900); } };
+    step(); replayTimer=setInterval(step,450); return;
+  }
+  const m=+v;
+  drawMap(last.c, m? m+radar.age : 0, m? `Projected for ${hhmm(Date.now()/1000+m*60)}` : `Radar at ${hhmm(last.time)}`);
+}
+function renderRadar(a){
+  if(radar.state==="loading"){ $("#rhead").textContent="Loading radar…"; return; }
+  if(radar.state==="error"){
+    $("#rhead").textContent="Radar couldn't load here.";
+    $("#rbody").textContent="It loads when the app is opened as a regular web page, for example on GitHub Pages. The model forecast below still works.";
+    return;
+  }
+  if(radar.analysable){
+    const nc=nowcast(a), [h,b]=nowcastWords(a,nc);
+    $("#rhead").textContent=h; $("#rbody").textContent=b;
+    $("#compare").textContent=`Our radar for ${a.n}: ${h}`;
+    $("#rtl").innerHTML=nc.steps.slice(0,12).map(s=>`<div style="background:${segColor(s.v)}" title="+${s.m} min: ${s.v?INT[s.v]:"dry"}"></div>`).join("");
+  } else {
+    $("#rhead").textContent="Radar map loaded, but this browser blocked the rain analysis.";
+    $("#rbody").textContent="You can still read the map and replay the last 2 hours.";
+  }
+  $("#rnote").textContent=`Latest radar image ${hhmm(radar.frames.at(-1).time)} (radar runs about ${Math.round(radar.age)} min behind). Projections assume rain keeps its current track and strength, so trust the first hour most. If it's raining where you are but the map is empty, the radar feed may be down.`;
+  showView(view==="replay"?0:view);
+}
+async function loadRadar(){
+  radar.state="loading"; renderRadar(current);
+  try{
+    const meta=await (await fetch("https://api.rainviewer.com/public/weather-maps.json")).json();
+    const past=(meta.radar?.past||[]).slice(-13);
+    if(!past.length) throw new Error("no frames");
+    const style=matchMedia("(prefers-color-scheme: dark)").matches?"dark_all":"light_all";
+    const [base,...fr]=await Promise.all([
+      composite((x,y)=>`https://a.basemaps.cartocdn.com/${style}/${RZ}/${x}/${y}.png`),
+      ...past.map(f=>composite((x,y)=>`${meta.host}${f.path}/256/${RZ}/${x}/${y}/2/1_0.png`))
+    ]);
+    const frames=fr.map((f,i)=>({c:f.c,ok:f.ok,time:past[i].time})).filter(f=>f.ok);
+    if(!frames.length) throw new Error("no tiles");
+    Object.assign(radar,{base:base.c,frames,vx:0,vy:0,motionOk:false,analysable:true,
+      age:Math.max(0,(Date.now()/1000-frames.at(-1).time)/60), loadedAt:Date.now()});
+    try{
+      radar.I=classGrid(frames.at(-1).c);
+      const old=frames[Math.max(0,frames.length-4)];
+      if(old!==frames.at(-1)){
+        const mo=estimateMotion(classGrid(old.c),radar.I,(frames.at(-1).time-old.time)/60);
+        Object.assign(radar,{vx:mo.vx,vy:mo.vy,motionOk:mo.ok});
+      }
+    }catch(e){ radar.analysable=false; }
+    radar.state="ready";
+  }catch(e){ radar.state="error"; }
+  renderRadar(current);
+}
+$("#rctl").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) showView(b.dataset.v==="replay"?"replay":+b.dataset.v); });
+
+
+/* ---------- Tamil Nadu Weatherman feed ---------- */
+// If any of these links change, update them here.
+const TNW = {
+  facebook: "https://www.facebook.com/tamilnaduweatherman",
+  x: "https://x.com/praddy06",
+  web: "https://www.tamilnaduweatherman.in/"
+};
+$("#lnk-fb").href = TNW.facebook; $("#lnk-x").href = TNW.x; $("#lnk-web").href = TNW.web;
+let feedLoaded = false;
+function loadFeed(){
+  if(feedLoaded) return; feedLoaded = true;
+  const f = $("#feedframe"), w = Math.min(500, Math.max(180, Math.round(f.clientWidth || 500))), h = Math.max(520, Math.round(f.clientHeight || 700));
+  const src = "https://www.facebook.com/plugins/page.php?" + new URLSearchParams({
+    href: TNW.facebook, tabs: "timeline", width: w, height: h,
+    small_header: "true", hide_cover: "true", adapt_container_width: "true", show_facepile: "false"
+  });
+  f.innerHTML = `<iframe src="${src}" title="Tamil Nadu Weatherman Facebook posts" loading="lazy" allow="encrypted-media" scrolling="yes"></iframe>`;
+}
+function setTab(t){
+  $("#layout").dataset.tab = t;
+  document.querySelectorAll(".switch button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.tab===t));
+  if(t==="his") loadFeed();
+  window.scrollTo({top:0});
+}
+document.querySelector(".switch").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) setTab(b.dataset.tab); });
+const wide = matchMedia("(min-width:980px)");
+if(wide.matches) loadFeed();
+wide.addEventListener("change",e=>{ if(e.matches) loadFeed(); });
+
+/* ---------- flow ---------- */
+async function load(a){
+  current = a;
+  if(radar.state==="idle" || (radar.state!=="loading" && Date.now()-(radar.loadedAt||0)>10*60*1000)) loadRadar();
+  else renderRadar(a);
+  document.querySelectorAll("#areas button").forEach(b=>b.setAttribute("aria-pressed", b.textContent===a.n));
+  if(cache[a.n]){ cache[a.n].kind==="live"? render(a,cache[a.n].F) : renderFallback(a,cache[a.n].R); return; }
+  $("#out").innerHTML = `<p class="status">Checking five weather models for ${esc(a.n)}…</p>`;
+  try{
+    const F = process(await fetchModels(a));
+    cache[a.n] = {kind:"live",F}; if(current===a) render(a,F);
+  }catch(e){
+    $("#out").innerHTML = `<p class="status">Model data unavailable here. Searching the latest forecasts for ${esc(a.n)} instead (takes ~20 seconds)…</p>`;
+    try{
+      const R = await claudeFallback(a);
+      cache[a.n] = {kind:"web",R}; if(current===a) renderFallback(a,R);
+    }catch(e2){
+      $("#out").innerHTML = `<p class="status">Couldn't reach any forecast source. Check your connection and try again.</p><button class="retry" onclick="load(current)">Try again</button>`;
+    }
+  }
+}
+$("#areas").innerHTML = AREAS.map((a,i)=>`<button type="button" aria-pressed="false" data-i="${i}">${a.n}</button>`).join("");
+$("#areas").addEventListener("click",e=>{const b=e.target.closest("button"); if(b) load(AREAS[+b.dataset.i]);});
+load(AREAS[0]);
+</script>
+</body>
+</html>

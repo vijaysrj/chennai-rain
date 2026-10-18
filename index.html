@@ -122,6 +122,10 @@ dialog#picker::backdrop,dialog#installHelp::backdrop{background:rgba(8,14,22,.55
 .p24bars div{flex:1;background:var(--rain);border-radius:3px 3px 0 0;min-height:2px}
 .p24bars div.dry{background:var(--dry)}
 .p24bars div.hv{background:var(--heavy)}
+.p24bars div.rb{outline:2px solid var(--marigold);outline-offset:-2px}
+.rbkey{display:inline-block;width:10px;height:10px;border:2px solid var(--marigold);border-radius:2px;vertical-align:-1px;margin-right:4px}
+#p24warn[hidden]{display:none}
+#p24warn a{color:inherit;font-weight:600}
 
 /* ---- page sections ---- */
 .label{font-size:.92rem;font-weight:600;margin:0 0 6px;color:var(--sea)}
@@ -257,13 +261,15 @@ footer{margin:40px 18px 0;font-size:.78rem;color:var(--muted)}
   <h2 class="label">Last 24 hours</h2>
   <p class="p24head serif" id="p24head"></p>
   <p class="p24body" id="p24body"></p>
+  <div class="warn" id="p24warn" hidden></div>
   <div class="p24bars" id="p24bars" aria-hidden="true"></div>
   <div class="bars-axis"><span>24 hrs ago</span><span>12 hrs ago</span><span>Now</span></div>
-  <p class="rnote">Estimated from five weather models' hour-by-hour rain for your spot; there's no public live rain-gauge feed for Chennai. Totals can be off by a few mm, especially in thunderstorms.</p>
+  <p class="rnote" id="p24legend" hidden><span class="rbkey"></span> Hours raised to match what the radar saw.</p>
+  <p class="rnote">An estimate, not a rain-gauge reading. It comes from five weather models, which average rain over areas 9–25 km wide, so they miss the peaks of small, intense downpours. The last 2 hours use radar when it saw more rain than the models. For measured totals, IMD and the Weatherman's gauge posts are the reference.</p>
 </section>
 <div id="out" class="later"><p class="status">Loading forecast…</p></div>
 <footer>
-  <p style="margin:0 0 8px">Chennai Mazhai v8 · 16 Oct 2026</p>
+  <p style="margin:0 0 8px">Chennai Mazhai v9 · 18 Oct 2026</p>
   <span id="credit">Rain data from LibreWXR or RainViewer, map © CARTO © OpenStreetMap contributors.</span> The 2-hour outlook projects recent rain movement forward.
   Model forecast from Open-Meteo, blending five global weather models (ECMWF, GFS, ICON, GEM, JMA).
   This is not an official forecast. For cyclone and flood warnings, follow IMD Chennai and the Greater Chennai Corporation.
@@ -672,18 +678,18 @@ function nowcast(a){
     }
   return {steps,nearest};
 }
-function pastFor(a){
+function pastFor(a, rad=3){
   // rain over the area in each 10-minute slot of the last 2 hours, read from past radar frames
   const P=localPx(a.lat,a.lon), nowS=Date.now()/1000, last=radar.frames.at(-1), out=[];
   for(let m=-120;m<0;m+=10){
     const target=nowS+m*60;
     if(target>last.time){ // newer than the latest radar image: use its projection
-      const t=(target-last.time)/60; out.push({m,v:sampleMax(radar.I,P.x-radar.vx*t,P.y-radar.vy*t,3)}); continue;
+      const t=(target-last.time)/60; out.push({m,v:sampleMax(radar.I,P.x-radar.vx*t,P.y-radar.vy*t,rad)}); continue;
     }
     let best=null,bd=1e9;
     for(const f of radar.frames){ const d=Math.abs(f.time-target); if(d<bd){bd=d;best=f;} }
     if(!best||bd>10*60){ out.push({m,v:null}); continue; }
-    try{ best.I ??= classGrid(best.c); out.push({m,v:sampleMax(best.I,P.x,P.y,3)}); }catch(e){ out.push({m,v:null}); }
+    try{ best.I ??= classGrid(best.c); out.push({m,v:sampleMax(best.I,P.x,P.y,rad)}); }catch(e){ out.push({m,v:null}); }
   }
   return out;
 }
@@ -777,6 +783,7 @@ function renderRadar(a){
     $("#rrows").hidden=false;
     ["#rowPast","#rowNow","#rowNext"].forEach((id,i)=>$(id).textContent=st.rows[i]);
     $("#compare").textContent=`Our radar for ${a.n}: ${h}`;
+    if(!$("#past24").hidden) renderPast24(a);
     rainFX.set(Math.max(...nc.steps.slice(0,7).map(s=>s.v)), radar.vx);
     const drip=(v,cls,label)=>`<div class="${cls}" style="height:${v==null?5:[5,30,55,80,100][v]}%;${v==null?"":`background:var(--d${v})`}" title="${label}: ${v==null?"no radar data":v?INT[v]:"dry"}"></div>`;
     $("#rtl").innerHTML = past.map(p=>drip(p.v, p.v==null?"past nodata":"past", `${-p.m} min ago`)).join("")
@@ -914,6 +921,9 @@ wide.addEventListener("change",e=>{ if(e.matches) loadFeed(); });
 /* ---------- last 24 hours ---------- */
 const past24Cache = {};
 const hourLabel = h => `${h%12||12} ${h<12?"am":"pm"}`;
+const RADAR_MMH = [0, 2, 8, 25, 60]; // rough rain rate for each radar class, mm per hour
+const istHourKey = unix => { const p=Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",hourCycle:"h23"}).formatToParts(new Date(unix*1000)).map(x=>[x.type,x.value])); return `${p.year}-${p.month}-${p.day}T${p.hour}:00`; };
+
 async function fetchPast24(a){
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${a.lat}&longitude=${a.lon}&hourly=precipitation&models=${Object.keys(MODELS).join(",")}&timezone=Asia%2FKolkata&past_hours=24&forecast_hours=1`;
   const r = await fetch(url); if(!r.ok) throw new Error("HTTP "+r.status);
@@ -921,41 +931,70 @@ async function fetchPast24(a){
   const nowKey = `${now.date}T${String(now.hour).padStart(2,"0")}:00`;
   const models = Object.keys(MODELS).filter(m=>(H["precipitation_"+m]||[]).some(v=>v!=null));
   const rows = [];
-  H.time.forEach((t,i)=>{ if(t>=nowKey) return;
-    const v = models.map(m=>H["precipitation_"+m][i]).filter(x=>x!=null);
-    if(v.length) rows.push({t, date:t.slice(0,10), h:+t.slice(11,13), mm:median(v)});
+  H.time.forEach((t,i)=>{ if(t>nowKey) return; // up to and including the current hour
+    const per = {}; models.forEach(m=>{ const v=H["precipitation_"+m][i]; if(v!=null) per[m]=v; });
+    if(Object.keys(per).length) rows.push({t, date:t.slice(0,10), h:+t.slice(11,13), per});
   });
-  return {rows: rows.slice(-24), today: now.date};
+  return {rows: rows.slice(-24), models, today: now.date};
 }
-function past24Words(P){
-  const rows = P.rows, total = rows.reduce((x,r)=>x+r.mm,0);
-  const when = r => `${r.date===P.today?"":"yesterday "}${hourLabel(r.h)}`;
-  // group rainy hours into spells
+
+// Radar's view of the last 2 hours: mm per hour at the spot, and the strongest rain seen nearby
+function radarRecent(a){
+  if(radar.state!=="ready" || !radar.analysable) return null;
+  const nowS = Date.now()/1000, byHour = {};
+  pastFor(a,3).forEach(b=>{ if(b.v==null) return; const k=istHourKey(nowS+b.m*60); byHour[k]=(byHour[k]||0)+RADAR_MMH[b.v]/6; });
+  const near = pastFor(a,12).reduce((x,b)=>Math.max(x,b.v||0),0); // within ~15 km
+  return {byHour, near};
+}
+
+function buildPast24(P, R){
+  // per model: hourly rain, with the last 2 hours raised to the radar amount when radar saw more
+  const rows = P.rows.map(r=>{
+    const rad = R?.byHour[r.t];
+    const per = {}; for(const m in r.per) per[m] = rad!=null ? Math.max(r.per[m], rad) : r.per[m];
+    return {...r, per, mm: median(Object.values(per)), radarBoost: rad!=null && rad>median(Object.values(r.per))+0.5};
+  });
+  const totals = P.models.map(m=>rows.reduce((x,r)=>x+(r.per[m]||0),0)).filter(x=>x!=null);
+  return {rows, lo: Math.min(...totals), hi: Math.max(...totals), mid: median(totals)};
+}
+
+function past24Words(P, B, R){
+  const rows = B.rows, when = r => `${r.date===P.today?"":"yesterday "}${hourLabel(r.h)}`;
   const spells=[]; let cur=null;
   rows.forEach(r=>{ if(r.mm>=0.2){ if(!cur){ cur={from:r,to:r,mm:0}; spells.push(cur); } cur.to=r; cur.mm+=r.mm; } else cur=null; });
   spells.sort((x,y)=>y.mm-x.mm);
   const span = sp => sp.from===sp.to ? `${sp.from.date===P.today?"":"yesterday "}around ${hourLabel(sp.from.h)}` : `between ${when(sp.from)} and ${hourLabel((sp.to.h+1)%24)}`;
-  if(total<0.2 || !spells.length) return ["No rain in the last 24 hours.", "Dry all day and night at your spot."];
-  const peak = rows.reduce((x,r)=>r.mm>x.mm?r:x);
-  const [cat] = imdCategory(total);
-  const head = total<2.5 ? `Just a trace of rain in the last 24 hours (under ${fmt(Math.max(total,0.5))} mm).`
-    : `About ${fmt(total)} mm of rain in the last 24 hours, mostly ${span(spells[0])}.`;
-  const more = spells.length>1 ? ` There was another spell ${span(spells[1])}.` : "";
-  const body = `${cat} by IMD's daily scale. Heaviest hour: ${when(peak)}, about ${fmt(peak.mm)} mm.${more}`;
-  return [head, body];
+  const range = (lo,hi) => { const L=Math.round(lo), H=Math.round(hi); return L===H ? `about ${H} mm` : `about ${L}–${H} mm`; };
+  let head, body;
+  if(B.hi<0.5 || !spells.length){ head="No rain in the last 24 hours."; body="Dry all day and night at your spot."; }
+  else if(B.hi<2.5){ head="Just a trace of rain in the last 24 hours."; body="Under 3 mm at your spot."; }
+  else {
+    head = `${range(B.lo,B.hi).replace(/^./,c=>c.toUpperCase())} of rain in the last 24 hours, mostly ${span(spells[0])}.`;
+    const peak = rows.reduce((x,r)=>r.mm>x.mm?r:x);
+    body = `Heaviest hour: ${when(peak)}.${spells.length>1?` Another spell ${span(spells[1])}.`:""} The range shows how much the estimates disagree.`;
+  }
+  // warning when real totals could be far higher than models show
+  let warn = "";
+  if(R && R.near>=3) warn = `${R.near>=4?"Very intense":"Intense"} rain was seen on radar near you in the last 2 hours. Downpours like this can drop far more than the models show, sometimes 100 mm in an hour, so real totals here may be much higher.`;
+  else if(B.hi>=64.5) warn = "Heavy rain fell in the area. Totals can vary a lot from street to street, and localised downpours are often much higher than the models show.";
+  return {head, body, warn};
 }
+
 async function renderPast24(a){
   const key = `${a.lat.toFixed(3)},${a.lon.toFixed(3)}`;
   try{
     const P = past24Cache[key] ??= await fetchPast24(a);
     if(current!==a) return;
-    const [h,b] = past24Words(P), max = Math.max(1, ...P.rows.map(r=>r.mm));
-    $("#p24head").textContent = h; $("#p24body").textContent = b;
-    $("#p24bars").innerHTML = P.rows.map(r=>`<div class="${r.mm<0.2?"dry":r.mm>=10?"hv":""}" style="height:${r.mm<0.2?3:Math.max(8,Math.round(r.mm/max*100))}%" title="${r.date===P.today?"":"Yesterday "}${hourLabel(r.h)}: ${fmt(r.mm)} mm"></div>`).join("");
+    const R = radarRecent(a), B = buildPast24(P,R), W = past24Words(P,B,R);
+    const max = Math.max(1, ...B.rows.map(r=>r.mm));
+    $("#p24head").textContent = W.head; $("#p24body").textContent = W.body;
+    const wb = $("#p24warn");
+    if(W.warn){ wb.hidden=false; wb.innerHTML = `${esc(W.warn)} <a href="${TNW.facebook}" target="_blank" rel="noopener">See the Weatherman's gauge readings</a>`; } else wb.hidden=true;
+    $("#p24bars").innerHTML = B.rows.map(r=>`<div class="${r.mm<0.2?"dry":r.mm>=10?"hv":""}${r.radarBoost?" rb":""}" style="height:${r.mm<0.2?3:Math.max(8,Math.round(r.mm/max*100))}%" title="${r.date===P.today?"":"Yesterday "}${hourLabel(r.h)}: about ${fmt(r.mm)} mm${r.radarBoost?" (raised to match radar)":""}"></div>`).join("");
+    $("#p24legend").hidden = !B.rows.some(r=>r.radarBoost);
     $("#past24").hidden = false;
   }catch(e){ delete past24Cache[key]; if(current===a) $("#past24").hidden = true; }
 }
-
 /* ---------- flow ---------- */
 async function load(a){
   current = a;
